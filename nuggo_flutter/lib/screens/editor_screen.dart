@@ -1,0 +1,1467 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../widgets/digital_card.dart';
+import '../models/card_data.dart';
+import '../models/profile.dart';
+import '../constants/constants.dart';
+import '../constants/theme.dart';
+
+class EditorScreen extends StatefulWidget {
+  const EditorScreen({super.key});
+
+  @override
+  State<EditorScreen> createState() => _EditorScreenState();
+}
+
+class _EditorScreenState extends State<EditorScreen> {
+  static const Color _accentOrange = Color(0xFFFF8A3D);
+  ThemeType _activeThemeTab = ThemeType.professional;
+  final ScrollController _editorScrollController = ScrollController();
+  final ScrollController _profilesScrollController = ScrollController();
+  final GlobalKey _backgroundSectionKey = GlobalKey();
+  final GlobalKey _languageModeToggleKey = GlobalKey();
+  OverlayEntry? _languageModeOverlay;
+
+  /// 미리보기 아이콘과 나란히 보이도록 저장 버튼 top (4+52+6 + preview 내부 아이콘 세로 중심 - 32)
+  static const double _saveButtonTopAlignWithPreviewIcon = 421.0; // 기존 기준에서 1.5cm(약 57px) 하향
+  bool _scrollToBackgroundScheduled = false;
+  bool _sloganDefaultSet = false;
+  String? _pendingDefaultSlogan;
+  bool _aiSloganLoading = false;
+  bool _sloganKoreanMode = true;
+  bool _formReady = false;
+  final TextEditingController _sloganController = TextEditingController();
+  final Map<String, TextEditingController> _formControllers = {};
+  String? _cachedLanguage;
+  late Map<String, String> _cachedTexts;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _formReady = true);
+      _precacheThemeImages();
+    });
+  }
+
+  Future<void> _precacheThemeImages() async {
+    // 초기 지연 체감을 줄이기 위해 테마 썸네일 이미지를 선로딩
+    final urls = <String>{};
+    for (final group in AppConstants.themeTemplates.values) {
+      for (final theme in group) {
+        if (theme.startsWith('http')) urls.add(theme);
+      }
+    }
+    for (final url in urls) {
+      try {
+        await precacheImage(NetworkImage(url), context);
+      } catch (_) {
+        // 네트워크 실패는 조용히 무시
+      }
+    }
+  }
+
+  /// 배경 테마 섹션이 상단에 보이도록 스크롤
+  void _scrollToBackgroundSection() {
+    final context = _backgroundSectionKey.currentContext;
+    if (context != null && mounted) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+        alignment: 0.0,
+      );
+    }
+  }
+
+  /// 저장/업데이트 이후 에디터 기본(정상) 화면 위치로 복원
+  void _resetEditorToNormalView() {
+    if (!_editorScrollController.hasClients) return;
+    _editorScrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  TextEditingController _getFormController(String key, String value) {
+    final c = _formControllers[key] ??= TextEditingController(text: value);
+    if (c.text != value) {
+      c.text = value;
+      c.selection = TextSelection.collapsed(offset: value.length);
+    }
+    return c;
+  }
+
+  @override
+  void dispose() {
+    _languageModeOverlay?.remove();
+    _languageModeOverlay = null;
+    _editorScrollController.dispose();
+    _profilesScrollController.dispose();
+    _sloganController.dispose();
+    for (final c in _formControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _showLanguageModeToastNearToggle(String text) {
+    final targetContext = _languageModeToggleKey.currentContext;
+    if (targetContext == null || !mounted) return;
+    final overlay = Overlay.of(context);
+    final box = targetContext.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+
+    _languageModeOverlay?.remove();
+    _languageModeOverlay = null;
+
+    final targetTopLeft = box.localToGlobal(Offset.zero);
+    final targetSize = box.size;
+    final entry = OverlayEntry(
+      builder: (ctx) {
+        final screen = MediaQuery.of(ctx).size;
+        const toastW = 78.0;
+        const toastH = 30.0;
+        final left = (targetTopLeft.dx + ((targetSize.width - toastW) / 2)).clamp(
+          8.0,
+          screen.width - toastW - 8.0,
+        );
+        final top = (targetTopLeft.dy - toastH - 8.0).clamp(
+          8.0,
+          screen.height - toastH - 8.0,
+        );
+        return Positioned(
+          left: left.toDouble(),
+          top: top.toDouble(),
+          child: IgnorePointer(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: toastW,
+                height: toastH,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111827).withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade600),
+                ),
+                child: Text(
+                  text,
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    _languageModeOverlay = entry;
+    overlay.insert(entry);
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (_languageModeOverlay == entry) {
+        entry.remove();
+        _languageModeOverlay = null;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AppProvider>(
+      builder: (context, provider, child) {
+        final data = provider.currentCardData;
+        final t = _getTexts(provider.settings.language);
+
+        // 내 명함에서 프로필 추가 후 에디터로 온 경우 배경 테마 섹션으로 스크롤
+        if ((provider.scrollToBackgroundThemeOnNextBuild == true) && !_scrollToBackgroundScheduled) {
+          _scrollToBackgroundScheduled = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _scrollToBackgroundSection();
+              provider.consumeScrollToBackgroundTheme();
+              _scrollToBackgroundScheduled = false;
+            }
+          });
+        }
+
+        return Container(
+          color: const Color(0xFF0B0B0B),
+          width: double.infinity,
+          child: Stack(
+            children: [
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  return SingleChildScrollView(
+                    controller: _editorScrollController,
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: width),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 4),
+                          _buildProfilesSection(context, provider, t),
+                          const SizedBox(height: 6),
+                          _buildPreviewSection(context, provider, data),
+                          // 미리보기 아이콘과 백그라운드 헤더가 겹치지 않도록 섹션 시작점을 소폭 하향
+                          const SizedBox(height: 28),
+                          KeyedSubtree(
+                            key: _backgroundSectionKey,
+                            child: _buildBackgroundSection(context, provider, data, t),
+                          ),
+                          const SizedBox(height: 12),
+                          if (_formReady) _buildFormSections(context, provider, data, t) else const SizedBox(height: 100),
+                          const SizedBox(height: 150),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // 스크롤과 무관하게 화면 고정, 미리보기 아이콘과 나란히 (같은 세로 라인)
+              Positioned(
+                top: _saveButtonTopAlignWithPreviewIcon,
+                right: 24,
+                child: RepaintBoundary(
+                  child: _buildSaveFloatingButton(context, provider),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPreviewSection(BuildContext context, AppProvider provider, CardData data) {
+    // 명함 3% 축소 (242.55 * 0.97 ≈ 235.3)
+    const cardW = 235.3;
+    const cardH = 376.5; // cardW * 1.6
+    const previewSectionHeight = 408.0; // 420 * 0.97 밀착
+    final previewLabelStyle = GoogleFonts.notoSansKr(
+      fontSize: 11,
+      fontWeight: FontWeight.w400,
+      letterSpacing: 0.5,
+      color: Colors.grey.shade200,
+    );
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        SizedBox(
+          height: previewSectionHeight,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const rightBlockWidth = 56.0 + 24.0; // 버튼열 + 우측패딩
+              final totalW = constraints.maxWidth;
+              final cardAreaW = totalW - rightBlockWidth;
+              final sideMargin = (cardAreaW - cardW) / 2;
+              final safeMargin = sideMargin.isNegative ? 0.0 : sideMargin;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(width: safeMargin),
+                  SizedBox(
+                    width: cardW,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text('실시간 미리보기', style: previewLabelStyle),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          height: cardH * 0.92 + 28,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.center,
+                            children: [
+                              Transform.scale(
+                                scale: 0.92,
+                                child: SizedBox(
+                                  width: cardW,
+                                  height: cardH,
+                                  child: DigitalCard(data: data, isLarge: false),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: -24,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: GestureDetector(
+                                      onTap: () => provider.setActiveView(ViewType.preview),
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.grey.shade400),
+                                        ),
+                                        child: Icon(Icons.visibility_outlined, size: 24, color: Colors.grey.shade600),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: safeMargin),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _actionButton(
+                              icon: Icons.add,
+                              color: _accentOrange,
+                              size: 56,
+                              iconSize: 32,
+                              borderWidth: 3,
+                              borderColor: const Color(0xFF0B0B0B),
+                              onTap: () {
+                                provider.createNewProfile();
+                                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBackgroundSection());
+                              },
+                            ),
+                            const SizedBox(height: 10),
+                            _actionButton(
+                              icon: Icons.send,
+                              color: const Color(0xCC161B22),
+                              iconColor: AppTheme.primary,
+                              shapeRadius: 12,
+                              size: 44,
+                              onTap: () {},
+                            ),
+                            const SizedBox(height: 8),
+                            _actionButton(
+                              icon: Icons.qr_code_2,
+                              color: const Color(0xCC161B22),
+                              iconColor: const Color(0xFFCBD5E1),
+                              shapeRadius: 12,
+                              size: 44,
+                              onTap: () {},
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+      ],
+    );
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required Color color,
+    Color? iconColor,
+    double size = 40,
+    double iconSize = 18,
+    double? shapeRadius,
+    double borderWidth = 0,
+    Color? borderColor,
+    required VoidCallback onTap,
+  }) {
+    final radius = shapeRadius ?? (size / 2);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(radius),
+          border: borderWidth > 0
+              ? Border.all(color: borderColor ?? Colors.white, width: borderWidth)
+              : Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: iconColor ?? Colors.white, size: iconSize),
+      ),
+    ),
+    );
+  }
+
+  Widget _buildBackgroundSection(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+    Map<String, String> t,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Background Theme',
+            style: GoogleFonts.playfairDisplay(
+              fontSize: 22,
+              fontWeight: FontWeight.w300,
+              fontStyle: FontStyle.italic,
+              letterSpacing: 2.5,
+              color: const Color(0xFFD4AF37),
+            ),
+          ),
+          const SizedBox(height: 10),
+          
+          // Theme Type Tabs
+          Container(
+            height: 32,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: ThemeType.values.map((type) {
+                final isActive = _activeThemeTab == type;
+                return Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _activeThemeTab = type),
+                    child: Container(
+                      margin: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: isActive ? Colors.white.withValues(alpha: 0.6) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: isActive
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 4,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Center(
+                        child: Text(
+                          type.name.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                            color: isActive ? Colors.black87 : Colors.grey.shade400,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Theme Templates (3% 축소: 100→97, 64→62)
+          SizedBox(
+            height: 97,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: AppConstants.themeTemplates[_activeThemeTab]!.length,
+              itemBuilder: (context, index) {
+                final theme = AppConstants.themeTemplates[_activeThemeTab]![index];
+                final isSelected = data.theme == theme;
+                final isHex = theme.startsWith('#');
+                
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    final newData = data.copyWith(theme: theme);
+                    provider.updateCardData(newData);
+                  },
+                  child: Container(
+                    width: 62,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey.shade300,
+                        width: isSelected ? 2 : 1,
+                      ),
+                      color: isHex ? _parseHexColor(theme) : null,
+                      image: !isHex
+                          ? DecorationImage(
+                              image: NetworkImage(theme),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: isSelected
+                        ? Center(
+                            child: Icon(
+                              Icons.check_circle_outline,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 28,
+                            ),
+                          )
+                        : null,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static const Color _profileActionRed = Color(0xFFE57373);
+
+  Widget _buildProfilesSection(
+    BuildContext context,
+    AppProvider provider,
+    Map<String, String> t,
+  ) {
+    final profiles = provider.savedProfiles;
+    final hasActiveToDelete = provider.activeProfileId != null &&
+        profiles.any((p) => p.id == provider.activeProfileId) &&
+        profiles.length > 1;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 52,
+              child: ListView.builder(
+                controller: _profilesScrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: profiles.isEmpty ? 1 : profiles.length + 1,
+                itemBuilder: (context, index) {
+                  // 맨 오른쪽: 새 프로필 추가 버튼 (프로필이 없을 때만 index 0, 있으면 마지막에 표시)
+                  final isAddButton = profiles.isEmpty ? index == 0 : index == profiles.length;
+                  if (isAddButton) {
+                    final isNewActive = profiles.isEmpty || provider.activeProfileId == null;
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        provider.createNewProfile();
+                        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBackgroundSection());
+                      },
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        margin: const EdgeInsets.only(left: 2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isNewActive ? AppTheme.primary : const Color(0xFF252B35),
+                            width: isNewActive ? 2 : 1,
+                          ),
+                          color: const Color(0xFF161B22),
+                        ),
+                        child: const Icon(Icons.add, color: Colors.white70, size: 24),
+                      ),
+                    );
+                  }
+                  final profile = profiles[index];
+                  final isActive = provider.activeProfileId == profile.id;
+                  return Transform.translate(
+                    offset: Offset(-12.0 * index, 0),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => provider.loadProfile(profile),
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        margin: const EdgeInsets.only(right: 2),
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isActive ? AppTheme.primary : const Color(0xFF252B35),
+                            width: isActive ? 2 : 1,
+                          ),
+                          color: const Color(0xFF161B22),
+                        ),
+                        child: ClipOval(
+                          child: _buildProfileAvatar(profile),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: _profileActionRed.withValues(alpha: 0.7),
+                ),
+                onPressed: hasActiveToDelete
+                    ? () async {
+                        final id = provider.activeProfileId;
+                        if (id != null) await provider.deleteProfile(id);
+                      }
+                    : null,
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(28, 28),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.undo_outlined,
+                  size: 18,
+                  color: _profileActionRed.withValues(alpha: 0.7),
+                ),
+                onPressed: provider.canRestoreProfile
+                    ? () => provider.restoreLastDeletedProfile()
+                    : null,
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(28, 28),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 프로필 제목(이름)에서 이니셜 추출
+  static String _profileInitial(String name) {
+    final t = name.trim();
+    if (t.isEmpty) return '?';
+    final runes = t.runes.toList();
+    if (runes.isEmpty) return '?';
+    if (runes.first > 0x7F) return String.fromCharCodes([runes.first]);
+    final words = t.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+    if (words.length >= 2) {
+      final a = words.first.runes.first;
+      final b = words.last.runes.first;
+      return String.fromCharCodes([a]).toUpperCase() + String.fromCharCodes([b]).toUpperCase();
+    }
+    return String.fromCharCodes([runes.first]).toUpperCase();
+  }
+
+  static Color _parseThemeColor(String theme) {
+    if (!theme.startsWith('#')) return const Color(0xFF1a1c1e);
+    final h = theme.replaceAll('#', '');
+    final full = h.length == 3 ? h.split('').map((c) => '$c$c').join() : h;
+    if (full.length < 6) return const Color(0xFF1a1c1e);
+    return Color(int.parse('FF$full', radix: 16));
+  }
+
+  Widget _buildFormSections(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+    Map<String, String> t,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          OutlinedButton(
+                onPressed: _scrollToBackgroundSection,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primary,
+                  side: const BorderSide(color: AppTheme.primary),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  '명함 정보 입력',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Slogan (기본 슬로건 + AI 추천)
+          _buildSectionHeader('1. ${t['slogan']}'),
+          const SizedBox(height: 8),
+          _buildSloganField(context, provider, data, t),
+          
+          const SizedBox(height: 24),
+          
+          // Profile Info
+          _buildSectionHeader('2. ${t['profileInfo']}'),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField(
+                  fieldKey: 'fullName',
+                  label: t['fullName']!,
+                  value: data.fullName,
+                  onChanged: (value) => provider.updateCardData(data.copyWith(fullName: value)),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildTextField(
+                  fieldKey: 'jobTitle',
+                  label: t['jobTitle']!,
+                  value: data.jobTitle,
+                  onChanged: (value) => provider.updateCardData(data.copyWith(jobTitle: value)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            fieldKey: 'companyName',
+            label: t['companyName']!,
+            value: data.companyName,
+            onChanged: (value) => provider.updateCardData(data.copyWith(companyName: value)),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // 3. 사진 및 로고 (프로필 이미지)
+          _buildSectionHeader('3. ${t['media']}'),
+          const SizedBox(height: 12),
+          _buildProfileImageSection(context, provider, data, t),
+          
+          const SizedBox(height: 24),
+          
+          // 4. 연락처
+          _buildSectionHeader('4. ${t['contactInfo']}'),
+          const SizedBox(height: 16),
+          _buildPillInput(
+            fieldKey: 'phone',
+            icon: Icons.phone,
+            value: data.phone,
+            placeholder: t['placeholders.phone']!,
+            onChanged: (value) => provider.updateCardData(data.copyWith(phone: value)),
+          ),
+          const SizedBox(height: 12),
+          _buildPillInput(
+            fieldKey: 'sms',
+            icon: Icons.sms,
+            value: data.sms,
+            placeholder: t['placeholders.sms']!,
+            onChanged: (value) => provider.updateCardData(data.copyWith(sms: value)),
+          ),
+          const SizedBox(height: 12),
+          _buildPillInput(
+            fieldKey: 'email',
+            icon: Icons.email,
+            value: data.email,
+            placeholder: t['placeholders.email']!,
+            onChanged: (value) => provider.updateCardData(data.copyWith(email: value)),
+          ),
+          const SizedBox(height: 12),
+          _buildPillInput(
+            fieldKey: 'kakao',
+            icon: Icons.chat_bubble_outline,
+            value: data.kakao,
+            placeholder: t['placeholders.kakao']!,
+            onChanged: (value) => provider.updateCardData(data.copyWith(kakao: value)),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // 5. 링크 및 SNS
+          _buildSectionHeader('5. ${t['links']}'),
+          const SizedBox(height: 16),
+          _buildPillInput(
+            fieldKey: 'website',
+            icon: Icons.language,
+            value: data.website,
+            placeholder: t['placeholders.website']!,
+            onChanged: (value) => provider.updateCardData(data.copyWith(website: value)),
+          ),
+          const SizedBox(height: 12),
+          _buildPillInput(
+            fieldKey: 'portfolioUrl',
+            icon: Icons.folder_open,
+            value: data.portfolioUrl ?? '',
+            placeholder: t['placeholders.portfolio']!,
+            onChanged: (value) => provider.updateCardData(data.copyWith(portfolioUrl: value)),
+          ),
+          const SizedBox(height: 12),
+          _buildPillInput(
+            fieldKey: 'linkedin',
+            icon: Icons.public,
+            value: data.linkedin,
+            placeholder: t['placeholders.linkedin']!,
+            onChanged: (value) => provider.updateCardData(data.copyWith(linkedin: value)),
+          ),
+          const SizedBox(height: 12),
+          _buildPillInput(
+            fieldKey: 'shareLink',
+            icon: Icons.share,
+            value: data.shareLink,
+            placeholder: t['placeholders.shareLink']!,
+            onChanged: (value) => provider.updateCardData(data.copyWith(shareLink: value)),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // 6. 주소
+          _buildSectionHeader('6. ${t['address']}'),
+          const SizedBox(height: 16),
+          _buildPillInput(
+            fieldKey: 'address',
+            icon: Icons.location_on,
+            value: data.address,
+            placeholder: t['placeholders.address']!,
+            onChanged: (value) => provider.updateCardData(data.copyWith(address: value)),
+          ),
+          const SizedBox(height: 150),
+        ],
+      ),
+    );
+  }
+
+  /// 완전 원형 반투명 플로팅 SAVE 버튼 (스크롤과 무관하게 화면 고정)
+  Widget _buildSaveFloatingButton(BuildContext context, AppProvider provider) {
+    const size = 64.0;
+    return Material(
+      color: _accentOrange.withValues(alpha: 0.6),
+      elevation: 8,
+      shadowColor: Colors.black45,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: () => _showSaveDialog(context, provider),
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.save, color: Colors.white.withValues(alpha: 0.95), size: 22),
+              const SizedBox(height: 2),
+              Text(
+                'SAVE',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                  color: Colors.white.withValues(alpha: 0.95),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  TextStyle get _inputTextStyle => GoogleFonts.notoSansKr(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white);
+  /// 플레이스홀더(또는 이미지...)와 동일한 굵기
+  TextStyle get _inputHintStyle => GoogleFonts.notoSansKr(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.grey.shade500);
+  TextStyle get _inputLabelStyle => GoogleFonts.notoSansKr(fontSize: 10, fontWeight: FontWeight.w400, letterSpacing: 1, color: Colors.grey.shade300);
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.notoSansKr(
+        fontSize: 11,
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0.5,
+        color: Colors.grey.shade200,
+      ),
+    );
+  }
+
+  /// 빈 슬로건이면 기본 슬로건 한 번 설정
+  void _ensureDefaultSlogan(AppProvider provider, CardData data) {
+    if (data.slogan.isNotEmpty || _sloganDefaultSet) return;
+    _sloganDefaultSet = true;
+    _pendingDefaultSlogan = AppConstants.defaultSlogans[Random().nextInt(AppConstants.defaultSlogans.length)];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && provider.currentCardData.slogan.isEmpty && _pendingDefaultSlogan != null) {
+        provider.updateCardData(provider.currentCardData.copyWith(slogan: _pendingDefaultSlogan!));
+      }
+    });
+  }
+
+  Widget _buildSloganField(BuildContext context, AppProvider provider, CardData data, Map<String, String> t) {
+    _ensureDefaultSlogan(provider, data);
+    const assistControlYOffset = -10.0;
+    final displayValue = data.slogan.isEmpty ? (_pendingDefaultSlogan ?? '') : data.slogan;
+    if (_sloganController.text != displayValue) {
+      _sloganController.text = displayValue;
+      _sloganController.selection = TextSelection.collapsed(offset: displayValue.length);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+                child: TextField(
+                  controller: _sloganController,
+                  onChanged: (value) => provider.updateCardData(provider.currentCardData.copyWith(slogan: value)),
+                decoration: InputDecoration(
+                  hintText: displayValue.isEmpty ? t['placeholders.slogan'] : null,
+                  hintStyle: GoogleFonts.notoSansKr(fontSize: 18, fontStyle: FontStyle.italic, color: Colors.grey.shade500),
+                  border: const UnderlineInputBorder(),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade600)),
+                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.primary, width: 1.5)),
+                  filled: false,
+                ),
+                style: GoogleFonts.notoSansKr(fontSize: 18, fontStyle: FontStyle.italic, color: Colors.white),
+              ),
+            ),
+            const SizedBox(width: 6),
+            // 한/영 구분 표시 (작게)
+            Transform.translate(
+              offset: const Offset(0, assistControlYOffset),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() => _sloganKoreanMode = !_sloganKoreanMode);
+                    _showLanguageModeToastNearToggle(_sloganKoreanMode ? '한글 모드' : '영문 모드');
+                  },
+                  child: SizedBox(
+                    key: _languageModeToggleKey,
+                    width: 29, // 기존 약 22px 칩 대비 약 1.3배 탭 영역
+                    height: 26, // 기존 약 20px 칩 대비 약 1.3배 탭 영역
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey.shade600),
+                        ),
+                        child: Text(
+                          _sloganKoreanMode ? '한' : '영',
+                          style: GoogleFonts.notoSansKr(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey.shade400,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Transform.translate(
+              offset: const Offset(0, assistControlYOffset),
+              child: OutlinedButton.icon(
+                onPressed: _aiSloganLoading
+                    ? null
+                    : () async {
+                        setState(() => _aiSloganLoading = true);
+                        try {
+                          final suggested = await _fetchAiSlogan(
+                            provider.currentCardData,
+                            koreanMode: _sloganKoreanMode,
+                          );
+                          if (mounted && suggested != null && suggested.isNotEmpty) {
+                            provider.updateCardData(provider.currentCardData.copyWith(slogan: suggested));
+                          }
+                        } finally {
+                          if (mounted) setState(() => _aiSloganLoading = false);
+                        }
+                      },
+                icon: _aiSloganLoading
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Icon(Icons.auto_awesome, size: 18, color: AppTheme.primary),
+                label: Text(
+                  'AI 추천',
+                  style: GoogleFonts.notoSansKr(fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primary,
+                  side: const BorderSide(color: AppTheme.primary),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// AI(또는 기본 목록)로 슬로건 추천. API 키 없으면 기본 슬로건 중 하나 반환.
+  Future<String?> _fetchAiSlogan(CardData data, {required bool koreanMode}) async {
+    const fallbackEnglishSlogans = <String>[
+      'Your next story starts here.',
+      'Connect beyond first impressions.',
+      'One tap, lasting impact.',
+      'Small intro, big presence.',
+      'Turn hello into opportunity.',
+    ];
+
+    if (AppConstants.geminiApiKey.isNotEmpty) {
+      try {
+        final model = GenerativeModel(
+          model: 'gemini-1.5-flash',
+          apiKey: AppConstants.geminiApiKey,
+        );
+        final job = data.jobTitle.isNotEmpty ? data.jobTitle : '직무';
+        final company = data.companyName.isNotEmpty ? data.companyName : '회사';
+        final prompt = koreanMode
+            ? '다음 직무와 회사/소속에 어울리는 명함 한줄 소개(슬로건)를 한국어로 딱 한 문장만 추천해줘. 20자 이내로 짧고 임팩트 있게. 직무: $job, 회사/소속: $company. 답은 따옴표 없이 슬로건 한 문장만 출력.'
+            : 'Recommend exactly one short English business card slogan (max 25 characters), impactful and professional. Job: $job, Company/Org: $company. Output only one sentence without quotes.';
+        final response = await model.generateContent([Content.text(prompt)]);
+        final text = response.text?.trim();
+        if (text != null && text.isNotEmpty) return text;
+      } catch (_) {}
+    }
+    if (koreanMode) {
+      if (AppConstants.defaultSlogans.isEmpty) return null;
+      return AppConstants.defaultSlogans[Random().nextInt(AppConstants.defaultSlogans.length)];
+    }
+    return fallbackEnglishSlogans[Random().nextInt(fallbackEnglishSlogans.length)];
+  }
+
+  Widget _buildTextField({
+    required String fieldKey,
+    required String label,
+    required String value,
+    required Function(String) onChanged,
+  }) {
+    final controller = _getFormController(fieldKey, value);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: _inputLabelStyle,
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          onChanged: (value) => onChanged(value),
+          decoration: InputDecoration(
+            border: const UnderlineInputBorder(),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade600)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.primary, width: 1.5)),
+            isDense: true,
+            filled: false,
+          ),
+          style: _inputTextStyle,
+        ),
+      ],
+    );
+  }
+
+  /// 원형 프로필 목록: 명함 이미지(테마) + 프로필 제목 이니셜만 표시
+  Widget _buildProfileAvatar(Profile profile) {
+    final data = profile.data;
+    final theme = data.theme;
+    final isHex = theme.startsWith('#');
+    final initial = _profileInitial(profile.name);
+
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: isHex ? _parseThemeColor(theme) : const Color(0xFF1a1c1e),
+        image: !isHex && theme.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(theme),
+                fit: BoxFit.cover,
+                onError: (_, _) {},
+              )
+            : null,
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (!isHex && theme.isNotEmpty)
+            Container(color: Colors.black.withValues(alpha: 0.25)),
+          Center(
+            child: Text(
+              initial,
+              style: GoogleFonts.manrope(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                shadows: [
+                  Shadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 2, offset: const Offset(0, 1)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileImageThumb(String url) {
+    try {
+      if (url.startsWith('data:')) {
+        final bytes = base64Decode(url.split(',').last);
+        return Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.grey.shade200),
+            image: DecorationImage(
+              image: MemoryImage(bytes),
+              fit: BoxFit.cover,
+            ),
+          ),
+        );
+      }
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.grey.shade200),
+          image: DecorationImage(
+            image: NetworkImage(url),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    } catch (_) {
+      return Icon(Icons.person, size: 40, color: Colors.grey.shade400);
+    }
+  }
+
+  Widget _buildProfileImageSection(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+    Map<String, String> t,
+  ) {
+    final hasImage = data.profileImage != null && data.profileImage!.isNotEmpty;
+    final displayUrl = hasImage && !data.profileImage!.startsWith('data:')
+        ? data.profileImage!
+        : '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 프로필/로고 미리보기 + 변경 버튼 (아웃라인, 배경 없음)
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade600),
+          ),
+          child: Row(
+            children: [
+              if (hasImage)
+                _buildProfileImageThumb(data.profileImage!)
+              else
+                Icon(Icons.add_photo_alternate, size: 40, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Logo or Photo',
+                  style: GoogleFonts.notoSansKr(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade200),
+                ),
+              ),
+              if (hasImage)
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                  onPressed: () => provider.updateCardData(data.copyWith(profileImage: '')),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              if (hasImage) const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('이미지 업로드 기능은 준비 중입니다. URL로 입력해주세요.')),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primary,
+                  side: const BorderSide(color: AppTheme.primary),
+                ),
+                child: Text(t['uploadBtn']!),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // URL 입력 (이미지 링크 붙여넣기) - 배경 없이 깔끔
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade600),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.link, size: 20, color: Colors.grey.shade400),
+              const SizedBox(width: 16),
+              Expanded(
+                child: TextField(
+                  controller: TextEditingController(text: displayUrl)
+                    ..selection = TextSelection.collapsed(offset: displayUrl.length),
+                  onChanged: (value) => provider.updateCardData(data.copyWith(profileImage: value)),
+                  decoration: InputDecoration(
+                    hintText: t['placeholders.hotlink'],
+                    hintStyle: _inputHintStyle,
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    filled: false,
+                  ),
+                  style: _inputTextStyle,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPillInput({
+    required String fieldKey,
+    required IconData icon,
+    required String value,
+    required String placeholder,
+    required Function(String) onChanged,
+  }) {
+    final controller = _getFormController(fieldKey, value);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade600),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey.shade400),
+          const SizedBox(width: 16),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: (value) => onChanged(value),
+              decoration: InputDecoration(
+                hintText: placeholder,
+                hintStyle: _inputHintStyle,
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+                filled: false,
+              ),
+              style: _inputTextStyle,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSaveDialog(BuildContext context, AppProvider provider) {
+    final activeId = provider.activeProfileId;
+    final activeProfile = activeId == null
+        ? null
+        : provider.savedProfiles.where((p) => p.id == activeId).firstOrNull;
+    final isUpdateMode = activeProfile != null;
+    final nameController = TextEditingController(text: activeProfile?.name ?? '');
+
+    Future<void> saveAs(BuildContext dialogContext, {required bool updateCurrent}) async {
+      final name = nameController.text.trim();
+      if (name.isEmpty) return;
+      final targetId = updateCurrent && activeProfile != null
+          ? activeProfile.id
+          : 'p_${DateTime.now().millisecondsSinceEpoch}';
+      await provider.saveProfile(
+        Profile(id: targetId, name: name, data: provider.currentCardData),
+      );
+      if (!dialogContext.mounted) return;
+      Navigator.pop(dialogContext);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _resetEditorToNormalView();
+      });
+      ScaffoldMessenger.of(dialogContext).showSnackBar(
+        SnackBar(
+          content: Text(
+            updateCurrent ? '현재 프로필이 업데이트되었습니다.' : '새 프로필로 저장되었습니다.',
+          ),
+        ),
+      );
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isUpdateMode ? '프로필 업데이트 또는 새 저장' : '새 프로필 저장'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isUpdateMode
+                  ? '현재 프로필을 덮어쓸지, 새 프로필로 저장할지 선택하세요.'
+                  : '프로필 이름을 입력하고 새로 저장하세요.',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Profile Name',
+                hintText: 'e.g. Work V2',
+                labelStyle: GoogleFonts.notoSansKr(),
+                hintStyle: GoogleFonts.notoSansKr(color: Colors.grey),
+              ),
+              style: GoogleFonts.notoSansKr(fontSize: 16),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('취소'),
+          ),
+          if (isUpdateMode)
+            OutlinedButton(
+              onPressed: () => saveAs(dialogContext, updateCurrent: false),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                side: const BorderSide(color: AppTheme.primary),
+              ),
+              child: const Text('새 프로필로 저장'),
+            ),
+          OutlinedButton(
+            onPressed: () => saveAs(dialogContext, updateCurrent: isUpdateMode),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.primary,
+              side: const BorderSide(color: AppTheme.primary),
+            ),
+            child: Text(isUpdateMode ? '현재 프로필 업데이트' : '새 프로필 저장'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _parseHexColor(String hex) {
+    final hexCode = hex.replaceAll('#', '');
+    return Color(int.parse('FF$hexCode', radix: 16));
+  }
+
+  Map<String, String> _getTexts(String language) {
+    if (_cachedLanguage == language) return _cachedTexts;
+    _cachedLanguage = language;
+    if (language == 'ko') {
+      _cachedTexts = {
+        'backgrounds': '배경 테마',
+        'profiles': '프로필 목록',
+        'newProfile': '새 프로필',
+        'slogan': '한줄 소개',
+        'profileInfo': '기본 정보',
+        'media': '사진 및 로고',
+        'fullName': '이름',
+        'jobTitle': '직함 / 직책',
+        'companyName': '회사 / 소속',
+        'contactInfo': '연락처',
+        'links': '링크 및 SNS',
+        'address': '주소',
+        'uploadBtn': '변경',
+        'placeholders.slogan': '당신의 이야기를 들려주세요...',
+        'placeholders.phone': '전화번호',
+        'placeholders.sms': '문자 수신 번호',
+        'placeholders.email': '이메일 주소',
+        'placeholders.kakao': '카카오톡 ID',
+        'placeholders.website': '웹사이트 URL',
+        'placeholders.linkedin': 'LinkedIn 프로필',
+        'placeholders.shareLink': '커스텀 공유 링크',
+        'placeholders.portfolio': '포트폴리오 링크 입력 (Pro)',
+        'placeholders.address': '주소 입력',
+        'placeholders.hotlink': '또는 이미지 URL 붙여넣기...',
+      };
+      return _cachedTexts;
+    } else {
+      _cachedTexts = {
+        'backgrounds': 'Backgrounds',
+        'profiles': 'Profiles',
+        'newProfile': 'New',
+        'slogan': 'Personal Slogan',
+        'profileInfo': 'Profile Information',
+        'media': 'Media',
+        'fullName': 'Full Name',
+        'jobTitle': 'Job Title',
+        'companyName': 'Company Name',
+        'contactInfo': 'Contact Info',
+        'links': 'Links & SNS',
+        'address': 'Address',
+        'uploadBtn': 'Change',
+        'placeholders.slogan': 'Your story begins here...',
+        'placeholders.phone': 'Phone Number',
+        'placeholders.sms': 'Message Number',
+        'placeholders.email': 'Email Address',
+        'placeholders.kakao': 'KakaoTalk ID',
+        'placeholders.website': 'Website URL',
+        'placeholders.linkedin': 'LinkedIn Profile',
+        'placeholders.shareLink': 'Custom Share Link',
+        'placeholders.portfolio': 'Enter Portfolio URL (Pro)',
+        'placeholders.address': 'Physical Address',
+        'placeholders.hotlink': 'Or paste image URL (Hotlink)...',
+      };
+      return _cachedTexts;
+    }
+  }
+}
+

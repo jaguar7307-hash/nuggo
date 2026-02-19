@@ -1,0 +1,87 @@
+2. 상세 URL 및 컴포넌트 매핑
+각 URL 경로에 매핑될 기존 컴포넌트와 역할입니다.
+
+🅰️ 인증 그룹 (Auth Group)
+네비게이션 바(BottomNav)와 헤더(Header)가 없는 전체 화면입니다.
+
+URL Path	컴포넌트 (File)	설명
+/auth	components/AuthScreen.tsx	로그인 및 회원가입 화면. (게스트/이메일/소셜)
+/auth/callback	(신규 필요)	소셜 로그인 리다이렉트 처리용 (추후 구현)
+
+🅱️ 메인 앱 그룹 (App Group)
+Header와 BottomNav가 포함된 레이아웃(MainLayout)이 적용됩니다.
+URL Path	컴포넌트 (File)	설명
+/	Redirect -> /editor	            루트 접속 시 에디터로 리다이렉트
+/editor	views/EditorView.tsx	[메인] 명함 제작 및 편집 화면
+/my-cards	views/ProfileView.tsx	내가 만든 명함 목록 및 통계 확인
+/wallet	views/WalletView.tsx	QR 스캔으로 수집한 타인의 명함 보관함
+/account	views/AccountView.tsx	내 프로필 정보, 구독 관리
+/settings	views/SettingsView.tsx	앱 환경 설정 (다크모드, 알림 등)
+
+🆎 공유/보기 그룹 (Share Group)
+외부인에게 공유되는 링크입니다. 앱 UI(헤더/푸터) 없이 명함만 보여줍니다.
+
+URL Path	컴포넌트 (File)	설명
+/p/:cardId	views/PreviewView.tsx	[공유용] 완성된 명함 보기. (로그인 불필요)
+/p/:cardId/save	(기능 로직)	연락처 저장(vCard) 트리거
+
+3. 라우터 구현 가이드 (React Router v6 기준)
+이 설계를 코드로 구현할 때의 구조입니다. App.tsx를 아래와 같은 형태로 리팩토링하는 것을 권장합니다.
+
+레이아웃 구조 (Layout Wrapper)
+code
+Tsx
+// layouts/MainLayout.tsx
+// 헤더와 바텀네비게이션을 포함하는 껍데기
+const MainLayout = () => {
+  return (
+    <>
+      <Header />
+      <div className="flex-1 overflow-hidden">
+        <Outlet /> {/* 여기에 자식 라우트(Editor, Wallet 등)가 렌더링됨 */}
+      </div>
+      <BottomNav />
+    </>
+  );
+};
+
+
+라우터 설정 (Router Config)
+code
+Tsx
+<Routes>
+  {/* 1. 공개 라우트 */}
+  <Route path="/auth" element={<AuthScreen />} />
+  
+  {/* 2. 공유된 명함 보기 (별도 레이아웃) */}
+  <Route path="/p/:cardId" element={<PreviewView />} />
+
+  {/* 3. 보호된 라우트 (로그인 필요) */}
+  <Route element={<ProtectedRoute user={currentUser} />}>
+      <Route element={<MainLayout />}>
+          <Route path="/" element={<Navigate to="/editor" replace />} />
+          <Route path="/editor" element={<EditorView />} />
+          <Route path="/my-cards" element={<ProfileView />} />
+          <Route path="/wallet" element={<WalletView />} />
+          <Route path="/account" element={<AccountView />} />
+          <Route path="/settings" element={<SettingsView />} />
+      </Route>
+  </Route>
+</Routes>
+
+4. 모달(Modal) 관리 전략
+현재 코드(SendModal, QRModal 등)는 각 View 내부에서 useState로 열고 닫히고 있습니다.
+라우팅 설계 시 모달은 두 가지 방법으로 관리할 수 있습니다.
+현재 방식 유지 (권장):
+단순한 팝업(QR, 전송, 알림)은 페이지 이동이 아니므로 현재처럼 컴포넌트 내부 State로 관리합니다.
+URL 기반 모달 (심화):
+뒤로가기 버튼으로 모달을 닫고 싶다면 Query Parameter를 사용합니다.
+예: /editor?modal=font (폰트 선택 모달 열림)
+
+5. 데이터 흐름 (Data Flow)
+라우팅 도입 시 데이터 전달 방식이 변경됩니다.
+현재: App.tsx가 모든 데이터를 들고 props로 내려줌.
+변경 후:
+전역 상태 관리 (Context API / Zustand / Recoil): currentUser, cardData 등 핵심 데이터를 전역 스토어에 저장.
+URL Params: /p/:cardId 처럼 ID를 URL에서 읽어와서 해당 명함 데이터를 API나 스토어에서 조회(Fetch)하여 렌더링.
+lightbulb_tips

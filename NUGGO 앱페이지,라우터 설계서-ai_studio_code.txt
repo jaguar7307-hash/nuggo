@@ -1,0 +1,19 @@
+graph TD
+    Root[Root (/)]
+    
+    subgraph Public [공용 페이지]
+        Auth[/auth (로그인)]
+        CardView[/c/:id (명함 공유용 뷰)]
+    end
+    
+    subgraph Private [회원 전용 - Main Layout]
+        Editor[/editor (메인)]
+        MyCards[/my-cards (내 명함 목록)]
+        Wallet[/wallet (지갑)]
+        Account[/account (계정)]
+        Settings[/settings (설정)]
+    end
+
+    Root --> Auth
+    Root --> Private
+    Root --> CardView
