@@ -145,7 +145,6 @@ class AuthService {
     if (sessionEmail == null || token == null) {
       return null;
     }
-
     final users = await _storage.getUsers();
     final user = users.where((u) => u.email == sessionEmail).firstOrNull;
 

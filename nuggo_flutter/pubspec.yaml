@@ -43,35 +43,37 @@ dependencies:
   
   # Image Handling
   image_picker: ^1.1.2
-  image_cropper: ^8.0.2
+  image_cropper: ^11.0.0
   
   # QR Code
   qr_flutter: ^4.1.0
-  qr_code_scanner: ^1.0.1
   
   # NFC
-  nfc_manager: ^3.5.0
+  nfc_manager: ^4.1.1
   
   # Fonts
-  google_fonts: ^6.2.1
+  google_fonts: ^8.0.2
   
   # URL Launcher
   url_launcher: ^6.3.1
   
   # Sharing
-  share_plus: ^10.1.2
+  share_plus: ^12.0.1
   
   # Biometric Auth
-  local_auth: ^2.3.0
+  local_auth: ^3.0.0
   
   # Path Provider
   path_provider: ^2.1.4
+
+  # File Picker (포트폴리오 첨부)
+  file_picker: ^8.0.0+1
   
   # Permission Handler
-  permission_handler: ^11.3.1
+  permission_handler: ^12.0.1
   
   # Maps (for address)
-  flutter_map: ^7.0.2
+  flutter_map: ^8.2.2
   latlong2: ^0.9.1
   
   # HTTP
@@ -102,10 +104,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/images/naver_mail_icon.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

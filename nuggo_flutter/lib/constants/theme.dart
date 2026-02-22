@@ -4,8 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   static const Color primary = Color(0xFF6366F1);
   static const Color tangerine = Color(0xFFFF6B35);
+
   /// 로고 전용 (디자인 사양)
-  static const Color logoPrimary = Color(0xFF0055FF);   // NUG - Brand Blue
+  static const Color logoPrimary = Color(0xFF0055FF); // NUG - Brand Blue
   static const Color logoTangerine = Color(0xFFFF4F00); // GO - Neon Tangerine
 
   /// 상단·하단 메뉴바
@@ -22,7 +23,10 @@ class AppTheme {
       surface: Colors.white,
     ),
     scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-    textTheme: GoogleFonts.manropeTextTheme(),
+    textTheme: GoogleFonts.manropeTextTheme().apply(
+      decoration: TextDecoration.none,
+      decorationColor: Colors.transparent,
+    ),
     appBarTheme: const AppBarTheme(
       elevation: 0,
       backgroundColor: Colors.transparent,
@@ -38,9 +42,7 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
   );
@@ -54,7 +56,10 @@ class AppTheme {
       surface: const Color(0xFF0F172A),
     ),
     scaffoldBackgroundColor: const Color(0xFF020617),
-    textTheme: GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme),
+    textTheme: GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme).apply(
+      decoration: TextDecoration.none,
+      decorationColor: Colors.transparent,
+    ),
     appBarTheme: const AppBarTheme(
       elevation: 0,
       backgroundColor: Colors.transparent,
@@ -71,9 +76,7 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
   );

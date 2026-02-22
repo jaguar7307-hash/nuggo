@@ -104,6 +104,7 @@ class NuggoTextLogo extends StatelessWidget {
             fontWeight: FontWeight.w200,
             letterSpacing: letterSpacing,
             color: nugColor,
+            decoration: TextDecoration.none,
           ),
         ),
         Text(
@@ -113,6 +114,7 @@ class NuggoTextLogo extends StatelessWidget {
             fontWeight: FontWeight.w700,
             letterSpacing: letterSpacing,
             color: goColor,
+            decoration: TextDecoration.none,
           ),
         ),
       ],

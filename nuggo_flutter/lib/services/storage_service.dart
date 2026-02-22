@@ -14,11 +14,13 @@ class StorageService {
   static const String _keyAccessToken = 'tapcard_access_token';
   static const String _keyProfiles = 'tapcard_saved_profiles';
   static const String _keySettings = 'tapcard_settings';
+  static const String _keyEditorDraft = 'tapcard_editor_draft';
 
-  SharedPreferences? _prefs;
+  /// getInstance() 한 번만 호출되도록 Future 캐시 (동시 접근 시 데드락 방지)
+  Future<SharedPreferences>? _prefsFuture;
   Future<SharedPreferences> _getPrefs() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    return _prefs!;
+    _prefsFuture ??= SharedPreferences.getInstance();
+    return _prefsFuture!;
   }
 
   // Save Users
@@ -91,5 +93,11 @@ class StorageService {
     if (settingsString == null) return AppSettings();
     
     return AppSettings.fromJson(jsonDecode(settingsString));
+  }
+
+  // Clear temporary cache data only (preserve account/profiles/settings).
+  Future<void> clearTemporaryCache() async {
+    final prefs = await _getPrefs();
+    await prefs.remove(_keyEditorDraft);
   }
 }

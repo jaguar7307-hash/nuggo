@@ -19,6 +19,7 @@ class User {
   bool isGuest;
   AuthProvider provider;
   String? avatarUrl;
+  String? phoneNumber;
   MembershipTier membership;
   String? lockPin;
   int sendsToday;
@@ -35,6 +36,7 @@ class User {
     this.isGuest = false,
     required this.provider,
     this.avatarUrl,
+    this.phoneNumber,
     required this.membership,
     this.lockPin,
     this.sendsToday = 0,
@@ -52,6 +54,7 @@ class User {
     bool? isGuest,
     AuthProvider? provider,
     String? avatarUrl,
+    String? phoneNumber,
     MembershipTier? membership,
     String? lockPin,
     int? sendsToday,
@@ -68,6 +71,7 @@ class User {
       isGuest: isGuest ?? this.isGuest,
       provider: provider ?? this.provider,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
       membership: membership ?? this.membership,
       lockPin: lockPin ?? this.lockPin,
       sendsToday: sendsToday ?? this.sendsToday,
@@ -87,6 +91,7 @@ class User {
       'isGuest': isGuest,
       'provider': provider.index,
       'avatarUrl': avatarUrl,
+      'phoneNumber': phoneNumber,
       'membership': membership.index,
       'lockPin': lockPin,
       'sendsToday': sendsToday,
@@ -106,6 +111,7 @@ class User {
       isGuest: json['isGuest'] ?? false,
       provider: AuthProvider.values[json['provider'] ?? 0],
       avatarUrl: json['avatarUrl'],
+      phoneNumber: json['phoneNumber'],
       membership: MembershipTier.values[json['membership'] ?? 0],
       lockPin: json['lockPin'],
       sendsToday: json['sendsToday'] ?? 0,

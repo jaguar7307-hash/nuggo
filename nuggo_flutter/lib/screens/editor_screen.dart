@@ -1,8 +1,10 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:provider/provider.dart';
@@ -30,7 +32,8 @@ class _EditorScreenState extends State<EditorScreen> {
   OverlayEntry? _languageModeOverlay;
 
   /// 미리보기 아이콘과 나란히 보이도록 저장 버튼 top (4+52+6 + preview 내부 아이콘 세로 중심 - 32)
-  static const double _saveButtonTopAlignWithPreviewIcon = 421.0; // 기존 기준에서 1.5cm(약 57px) 하향
+  static const double _saveButtonTopAlignWithPreviewIcon =
+      421.0; // 기존 기준에서 1.5cm(약 57px) 하향
   bool _scrollToBackgroundScheduled = false;
   bool _sloganDefaultSet = false;
   String? _pendingDefaultSlogan;
@@ -41,6 +44,10 @@ class _EditorScreenState extends State<EditorScreen> {
   final Map<String, TextEditingController> _formControllers = {};
   String? _cachedLanguage;
   late Map<String, String> _cachedTexts;
+  static final TextInputFormatter _koreanOnlySloganFormatter =
+      FilteringTextInputFormatter.allow(
+        RegExp(r'[ㄱ-ㅎㅏ-ㅣ가-힣0-9\s\.,!\?\-\(\)~"]'),
+      );
 
   @override
   void initState() {
@@ -53,7 +60,6 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _precacheThemeImages() async {
-    // 초기 지연 체감을 줄이기 위해 테마 썸네일 이미지를 선로딩
     final urls = <String>{};
     for (final group in AppConstants.themeTemplates.values) {
       for (final theme in group) {
@@ -71,15 +77,67 @@ class _EditorScreenState extends State<EditorScreen> {
 
   /// 배경 테마 섹션이 상단에 보이도록 스크롤
   void _scrollToBackgroundSection() {
-    final context = _backgroundSectionKey.currentContext;
-    if (context != null && mounted) {
-      Scrollable.ensureVisible(
-        context,
+    final targetContext = _backgroundSectionKey.currentContext;
+    if (targetContext == null ||
+        !mounted ||
+        !_editorScrollController.hasClients) {
+      return;
+    }
+
+    final renderObject = targetContext.findRenderObject();
+    if (renderObject != null) {
+      final viewport = RenderAbstractViewport.of(renderObject);
+      final revealTop = viewport.getOffsetToReveal(renderObject, 0.0).offset;
+      final position = _editorScrollController.position;
+      final targetOffset = (revealTop - 2).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
+      _editorScrollController.animateTo(
+        targetOffset,
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
-        alignment: 0.0,
       );
+      return;
     }
+
+    Scrollable.ensureVisible(
+      targetContext,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+      alignment: 0.0,
+    );
+  }
+
+  bool _isBackgroundSectionAligned() {
+    final targetContext = _backgroundSectionKey.currentContext;
+    if (targetContext == null) return false;
+    final box = targetContext.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return false;
+    final top = box.localToGlobal(Offset.zero).dy;
+    return top >= 0 && top <= 8;
+  }
+
+  void _scrollToBackgroundSectionUntilAligned(
+    AppProvider provider, {
+    int attempt = 0,
+    int maxAttempts = 4,
+  }) {
+    _scrollToBackgroundSection();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final aligned = _isBackgroundSectionAligned();
+      if (aligned || attempt >= maxAttempts) {
+        provider.consumeScrollToBackgroundTheme();
+        _scrollToBackgroundScheduled = false;
+        return;
+      }
+      _scrollToBackgroundSectionUntilAligned(
+        provider,
+        attempt: attempt + 1,
+        maxAttempts: maxAttempts,
+      );
+    });
   }
 
   /// 저장/업데이트 이후 에디터 기본(정상) 화면 위치로 복원
@@ -131,10 +189,8 @@ class _EditorScreenState extends State<EditorScreen> {
         final screen = MediaQuery.of(ctx).size;
         const toastW = 78.0;
         const toastH = 30.0;
-        final left = (targetTopLeft.dx + ((targetSize.width - toastW) / 2)).clamp(
-          8.0,
-          screen.width - toastW - 8.0,
-        );
+        final left = (targetTopLeft.dx + ((targetSize.width - toastW) / 2))
+            .clamp(8.0, screen.width - toastW - 8.0);
         final top = (targetTopLeft.dy - toastH - 8.0).clamp(
           8.0,
           screen.height - toastH - 8.0,
@@ -187,13 +243,12 @@ class _EditorScreenState extends State<EditorScreen> {
         final t = _getTexts(provider.settings.language);
 
         // 내 명함에서 프로필 추가 후 에디터로 온 경우 배경 테마 섹션으로 스크롤
-        if ((provider.scrollToBackgroundThemeOnNextBuild == true) && !_scrollToBackgroundScheduled) {
+        if ((provider.scrollToBackgroundThemeOnNextBuild == true) &&
+            !_scrollToBackgroundScheduled) {
           _scrollToBackgroundScheduled = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              _scrollToBackgroundSection();
-              provider.consumeScrollToBackgroundTheme();
-              _scrollToBackgroundScheduled = false;
+              _scrollToBackgroundSectionUntilAligned(provider);
             }
           });
         }
@@ -220,15 +275,23 @@ class _EditorScreenState extends State<EditorScreen> {
                           const SizedBox(height: 4),
                           _buildProfilesSection(context, provider, t),
                           const SizedBox(height: 6),
-                          _buildPreviewSection(context, provider, data),
+                          _buildPreviewSection(context, provider, data, t),
                           // 미리보기 아이콘과 백그라운드 헤더가 겹치지 않도록 섹션 시작점을 소폭 하향
                           const SizedBox(height: 28),
                           KeyedSubtree(
                             key: _backgroundSectionKey,
-                            child: _buildBackgroundSection(context, provider, data, t),
+                            child: _buildBackgroundSection(
+                              context,
+                              provider,
+                              data,
+                              t,
+                            ),
                           ),
                           const SizedBox(height: 12),
-                          if (_formReady) _buildFormSections(context, provider, data, t) else const SizedBox(height: 100),
+                          if (_formReady)
+                            _buildFormSections(context, provider, data, t)
+                          else
+                            const SizedBox(height: 100),
                           const SizedBox(height: 150),
                         ],
                       ),
@@ -251,11 +314,16 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  Widget _buildPreviewSection(BuildContext context, AppProvider provider, CardData data) {
+  Widget _buildPreviewSection(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+    Map<String, String> t,
+  ) {
     // 명함 3% 축소 (242.55 * 0.97 ≈ 235.3)
     const cardW = 235.3;
     const cardH = 376.5; // cardW * 1.6
-    const previewSectionHeight = 408.0; // 420 * 0.97 밀착
+    const previewSectionHeight = 432.0; // 하단 미리보기 버튼 히트영역 확장분 반영
     final previewLabelStyle = GoogleFonts.notoSansKr(
       fontSize: 11,
       fontWeight: FontWeight.w400,
@@ -285,40 +353,60 @@ class _EditorScreenState extends State<EditorScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text('실시간 미리보기', style: previewLabelStyle),
+                        Text(t['livePreview']!, style: previewLabelStyle),
                         const SizedBox(height: 6),
                         SizedBox(
-                          height: cardH * 0.92 + 28,
+                          height: cardH * 0.92 + 28 + 24,
                           child: Stack(
                             clipBehavior: Clip.none,
-                            alignment: Alignment.center,
+                            alignment: Alignment.topCenter,
                             children: [
-                              Transform.scale(
-                                scale: 0.92,
-                                child: SizedBox(
-                                  width: cardW,
-                                  height: cardH,
-                                  child: DigitalCard(data: data, isLarge: false),
+                              Positioned(
+                                top: 0,
+                                child: Transform.scale(
+                                  scale: 0.92,
+                                  child: SizedBox(
+                                    width: cardW,
+                                    height: cardH,
+                                    child: DigitalCard(
+                                      data: data,
+                                      isLarge: false,
+                                    ),
+                                  ),
                                 ),
                               ),
                               Positioned(
-                                bottom: -24,
+                                bottom: 0,
                                 left: 0,
                                 right: 0,
                                 child: Center(
                                   child: MouseRegion(
                                     cursor: SystemMouseCursors.click,
                                     child: GestureDetector(
-                                      onTap: () => provider.setActiveView(ViewType.preview),
+                                      onTap: () => provider.setActiveView(
+                                        ViewType.preview,
+                                      ),
                                       behavior: HitTestBehavior.opaque,
-                                      child: Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.grey.shade400),
+                                      child: SizedBox(
+                                        width: 84,
+                                        height: 84,
+                                        child: Center(
+                                          child: Container(
+                                            width: 48,
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Colors.grey.shade400,
+                                              ),
+                                            ),
+                                            child: Icon(
+                                              Icons.visibility_outlined,
+                                              size: 24,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
                                         ),
-                                        child: Icon(Icons.visibility_outlined, size: 24, color: Colors.grey.shade600),
                                       ),
                                     ),
                                   ),
@@ -331,49 +419,51 @@ class _EditorScreenState extends State<EditorScreen> {
                     ),
                   ),
                   SizedBox(width: safeMargin),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _actionButton(
-                              icon: Icons.add,
-                              color: _accentOrange,
-                              size: 56,
-                              iconSize: 32,
-                              borderWidth: 3,
-                              borderColor: const Color(0xFF0B0B0B),
-                              onTap: () {
-                                provider.createNewProfile();
-                                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBackgroundSection());
-                              },
-                            ),
-                            const SizedBox(height: 10),
-                            _actionButton(
-                              icon: Icons.send,
-                              color: const Color(0xCC161B22),
-                              iconColor: AppTheme.primary,
-                              shapeRadius: 12,
-                              size: 44,
-                              onTap: () {},
-                            ),
-                            const SizedBox(height: 8),
-                            _actionButton(
-                              icon: Icons.qr_code_2,
-                              color: const Color(0xCC161B22),
-                              iconColor: const Color(0xFFCBD5E1),
-                              shapeRadius: 12,
-                              size: 44,
-                              onTap: () {},
-                            ),
-                          ],
+                  Padding(
+                    padding: const EdgeInsets.only(right: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _actionButton(
+                          icon: Icons.add,
+                          color: _accentOrange,
+                          size: 56,
+                          iconSize: 32,
+                          borderWidth: 3,
+                          borderColor: const Color(0xFF0B0B0B),
+                          onTap: () {
+                            provider.createNewProfile();
+                            WidgetsBinding.instance.addPostFrameCallback(
+                              (_) => _scrollToBackgroundSection(),
+                            );
+                          },
                         ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
+                        const SizedBox(height: 10),
+                        _actionButton(
+                          icon: Icons.send,
+                          color: const Color(0xCC161B22),
+                          iconColor: AppTheme.primary,
+                          shapeRadius: 12,
+                          size: 44,
+                          onTap: () {},
+                        ),
+                        const SizedBox(height: 8),
+                        _actionButton(
+                          icon: Icons.qr_code_2,
+                          color: const Color(0xCC161B22),
+                          iconColor: const Color(0xFFCBD5E1),
+                          shapeRadius: 12,
+                          size: 44,
+                          onTap: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       ],
     );
   }
@@ -396,25 +486,28 @@ class _EditorScreenState extends State<EditorScreen> {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(radius),
-          border: borderWidth > 0
-              ? Border.all(color: borderColor ?? Colors.white, width: borderWidth)
-              : Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.35),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(radius),
+            border: borderWidth > 0
+                ? Border.all(
+                    color: borderColor ?? Colors.white,
+                    width: borderWidth,
+                  )
+                : Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.35),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Icon(icon, color: iconColor ?? Colors.white, size: iconSize),
         ),
-        child: Icon(icon, color: iconColor ?? Colors.white, size: iconSize),
       ),
-    ),
     );
   }
 
@@ -440,7 +533,7 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          
+
           // Theme Type Tabs
           Container(
             height: 32,
@@ -458,7 +551,9 @@ class _EditorScreenState extends State<EditorScreen> {
                     child: Container(
                       margin: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        color: isActive ? Colors.white.withValues(alpha: 0.6) : Colors.transparent,
+                        color: isActive
+                            ? Colors.white.withValues(alpha: 0.6)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(6),
                         boxShadow: isActive
                             ? [
@@ -476,7 +571,9 @@ class _EditorScreenState extends State<EditorScreen> {
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1,
-                            color: isActive ? Colors.black87 : Colors.grey.shade400,
+                            color: isActive
+                                ? Colors.black87
+                                : Colors.grey.shade400,
                           ),
                         ),
                       ),
@@ -486,9 +583,9 @@ class _EditorScreenState extends State<EditorScreen> {
               }).toList(),
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Theme Templates (3% 축소: 100→97, 64→62)
           SizedBox(
             height: 97,
@@ -497,10 +594,11 @@ class _EditorScreenState extends State<EditorScreen> {
               physics: const BouncingScrollPhysics(),
               itemCount: AppConstants.themeTemplates[_activeThemeTab]!.length,
               itemBuilder: (context, index) {
-                final theme = AppConstants.themeTemplates[_activeThemeTab]![index];
+                final theme =
+                    AppConstants.themeTemplates[_activeThemeTab]![index];
                 final isSelected = data.theme == theme;
                 final isHex = theme.startsWith('#');
-                
+
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
@@ -521,7 +619,11 @@ class _EditorScreenState extends State<EditorScreen> {
                       color: isHex ? _parseHexColor(theme) : null,
                       image: !isHex
                           ? DecorationImage(
-                              image: NetworkImage(theme),
+                              image: ResizeImage(
+                                NetworkImage(theme),
+                                width: 124,
+                                height: 194,
+                              ),
                               fit: BoxFit.cover,
                             )
                           : null,
@@ -553,7 +655,8 @@ class _EditorScreenState extends State<EditorScreen> {
     Map<String, String> t,
   ) {
     final profiles = provider.savedProfiles;
-    final hasActiveToDelete = provider.activeProfileId != null &&
+    final hasActiveToDelete =
+        provider.activeProfileId != null &&
         profiles.any((p) => p.id == provider.activeProfileId) &&
         profiles.length > 1;
     return Padding(
@@ -571,28 +674,42 @@ class _EditorScreenState extends State<EditorScreen> {
                 itemCount: profiles.isEmpty ? 1 : profiles.length + 1,
                 itemBuilder: (context, index) {
                   // 맨 오른쪽: 새 프로필 추가 버튼 (프로필이 없을 때만 index 0, 있으면 마지막에 표시)
-                  final isAddButton = profiles.isEmpty ? index == 0 : index == profiles.length;
+                  final isAddButton = profiles.isEmpty
+                      ? index == 0
+                      : index == profiles.length;
                   if (isAddButton) {
-                    final isNewActive = profiles.isEmpty || provider.activeProfileId == null;
-                    return GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        provider.createNewProfile();
-                        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBackgroundSection());
-                      },
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        margin: const EdgeInsets.only(left: 2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isNewActive ? AppTheme.primary : const Color(0xFF252B35),
-                            width: isNewActive ? 2 : 1,
+                    final isNewActive =
+                        profiles.isEmpty || provider.activeProfileId == null;
+                    return MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          provider.createNewProfile();
+                          WidgetsBinding.instance.addPostFrameCallback(
+                            (_) => _scrollToBackgroundSection(),
+                          );
+                        },
+                        child: Container(
+                          width: 52,
+                          height: 52,
+                          margin: const EdgeInsets.only(left: 2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isNewActive
+                                  ? AppTheme.primary
+                                  : const Color(0xFF252B35),
+                              width: isNewActive ? 2 : 1,
+                            ),
+                            color: const Color(0xFF161B22),
                           ),
-                          color: const Color(0xFF161B22),
+                          child: const Icon(
+                            Icons.add,
+                            color: Colors.white70,
+                            size: 24,
+                          ),
                         ),
-                        child: const Icon(Icons.add, color: Colors.white70, size: 24),
                       ),
                     );
                   }
@@ -611,14 +728,14 @@ class _EditorScreenState extends State<EditorScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isActive ? AppTheme.primary : const Color(0xFF252B35),
+                            color: isActive
+                                ? AppTheme.primary
+                                : const Color(0xFF252B35),
                             width: isActive ? 2 : 1,
                           ),
                           color: const Color(0xFF161B22),
                         ),
-                        child: ClipOval(
-                          child: _buildProfileAvatar(profile),
-                        ),
+                        child: ClipOval(child: _buildProfileAvatar(profile)),
                       ),
                     ),
                   );
@@ -681,7 +798,8 @@ class _EditorScreenState extends State<EditorScreen> {
     if (words.length >= 2) {
       final a = words.first.runes.first;
       final b = words.last.runes.first;
-      return String.fromCharCodes([a]).toUpperCase() + String.fromCharCodes([b]).toUpperCase();
+      return String.fromCharCodes([a]).toUpperCase() +
+          String.fromCharCodes([b]).toUpperCase();
     }
     return String.fromCharCodes([runes.first]).toUpperCase();
   }
@@ -706,32 +824,32 @@ class _EditorScreenState extends State<EditorScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           OutlinedButton(
-                onPressed: _scrollToBackgroundSection,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primary,
-                  side: const BorderSide(color: AppTheme.primary),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  '명함 정보 입력',
-                  style: GoogleFonts.notoSansKr(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    color: AppTheme.primary,
-                  ),
-                ),
+            onPressed: _scrollToBackgroundSection,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.primary,
+              side: const BorderSide(color: AppTheme.primary),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              t['cardInfoInput']!,
+              style: GoogleFonts.notoSansKr(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+                color: AppTheme.primary,
               ),
-              const SizedBox(height: 20),
-              // Slogan (기본 슬로건 + AI 추천)
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Slogan (기본 슬로건 + AI 추천)
           _buildSectionHeader('1. ${t['slogan']}'),
           const SizedBox(height: 8),
           _buildSloganField(context, provider, data, t),
-          
+
           const SizedBox(height: 24),
-          
+
           // Profile Info
           _buildSectionHeader('2. ${t['profileInfo']}'),
           const SizedBox(height: 16),
@@ -742,7 +860,8 @@ class _EditorScreenState extends State<EditorScreen> {
                   fieldKey: 'fullName',
                   label: t['fullName']!,
                   value: data.fullName,
-                  onChanged: (value) => provider.updateCardData(data.copyWith(fullName: value)),
+                  onChanged: (value) =>
+                      provider.updateCardData(data.copyWith(fullName: value)),
                 ),
               ),
               const SizedBox(width: 16),
@@ -751,7 +870,8 @@ class _EditorScreenState extends State<EditorScreen> {
                   fieldKey: 'jobTitle',
                   label: t['jobTitle']!,
                   value: data.jobTitle,
-                  onChanged: (value) => provider.updateCardData(data.copyWith(jobTitle: value)),
+                  onChanged: (value) =>
+                      provider.updateCardData(data.copyWith(jobTitle: value)),
                 ),
               ),
             ],
@@ -761,18 +881,19 @@ class _EditorScreenState extends State<EditorScreen> {
             fieldKey: 'companyName',
             label: t['companyName']!,
             value: data.companyName,
-            onChanged: (value) => provider.updateCardData(data.copyWith(companyName: value)),
+            onChanged: (value) =>
+                provider.updateCardData(data.copyWith(companyName: value)),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // 3. 사진 및 로고 (프로필 이미지)
           _buildSectionHeader('3. ${t['media']}'),
           const SizedBox(height: 12),
           _buildProfileImageSection(context, provider, data, t),
-          
+
           const SizedBox(height: 24),
-          
+
           // 4. 연락처
           _buildSectionHeader('4. ${t['contactInfo']}'),
           const SizedBox(height: 16),
@@ -781,7 +902,8 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.phone,
             value: data.phone,
             placeholder: t['placeholders.phone']!,
-            onChanged: (value) => provider.updateCardData(data.copyWith(phone: value)),
+            onChanged: (value) =>
+                provider.updateCardData(data.copyWith(phone: value)),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -789,7 +911,8 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.sms,
             value: data.sms,
             placeholder: t['placeholders.sms']!,
-            onChanged: (value) => provider.updateCardData(data.copyWith(sms: value)),
+            onChanged: (value) =>
+                provider.updateCardData(data.copyWith(sms: value)),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -797,7 +920,8 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.email,
             value: data.email,
             placeholder: t['placeholders.email']!,
-            onChanged: (value) => provider.updateCardData(data.copyWith(email: value)),
+            onChanged: (value) =>
+                provider.updateCardData(data.copyWith(email: value)),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -805,11 +929,12 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.chat_bubble_outline,
             value: data.kakao,
             placeholder: t['placeholders.kakao']!,
-            onChanged: (value) => provider.updateCardData(data.copyWith(kakao: value)),
+            onChanged: (value) =>
+                provider.updateCardData(data.copyWith(kakao: value)),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // 5. 링크 및 SNS
           _buildSectionHeader('5. ${t['links']}'),
           const SizedBox(height: 16),
@@ -818,23 +943,19 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.language,
             value: data.website,
             placeholder: t['placeholders.website']!,
-            onChanged: (value) => provider.updateCardData(data.copyWith(website: value)),
+            onChanged: (value) =>
+                provider.updateCardData(data.copyWith(website: value)),
           ),
           const SizedBox(height: 12),
-          _buildPillInput(
-            fieldKey: 'portfolioUrl',
-            icon: Icons.folder_open,
-            value: data.portfolioUrl ?? '',
-            placeholder: t['placeholders.portfolio']!,
-            onChanged: (value) => provider.updateCardData(data.copyWith(portfolioUrl: value)),
-          ),
+          _buildPortfolioInput(context, provider, data, t['placeholders.portfolio']!),
           const SizedBox(height: 12),
           _buildPillInput(
             fieldKey: 'linkedin',
             icon: Icons.public,
             value: data.linkedin,
             placeholder: t['placeholders.linkedin']!,
-            onChanged: (value) => provider.updateCardData(data.copyWith(linkedin: value)),
+            onChanged: (value) =>
+                provider.updateCardData(data.copyWith(linkedin: value)),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -842,11 +963,12 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.share,
             value: data.shareLink,
             placeholder: t['placeholders.shareLink']!,
-            onChanged: (value) => provider.updateCardData(data.copyWith(shareLink: value)),
+            onChanged: (value) =>
+                provider.updateCardData(data.copyWith(shareLink: value)),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // 6. 주소
           _buildSectionHeader('6. ${t['address']}'),
           const SizedBox(height: 16),
@@ -855,7 +977,8 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.location_on,
             value: data.address,
             placeholder: t['placeholders.address']!,
-            onChanged: (value) => provider.updateCardData(data.copyWith(address: value)),
+            onChanged: (value) =>
+                provider.updateCardData(data.copyWith(address: value)),
           ),
           const SizedBox(height: 150),
         ],
@@ -872,7 +995,9 @@ class _EditorScreenState extends State<EditorScreen> {
       shadowColor: Colors.black45,
       shape: const CircleBorder(),
       child: InkWell(
-        onTap: () => _showSaveDialog(context, provider),
+        onTap: () {
+          _showSaveDialog(context, provider, _getTexts(provider.settings.language));
+        },
         customBorder: const CircleBorder(),
         child: SizedBox(
           width: size,
@@ -881,7 +1006,11 @@ class _EditorScreenState extends State<EditorScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.save, color: Colors.white.withValues(alpha: 0.95), size: 22),
+              Icon(
+                Icons.save,
+                color: Colors.white.withValues(alpha: 0.95),
+                size: 22,
+              ),
               const SizedBox(height: 2),
               Text(
                 'SAVE',
@@ -899,10 +1028,24 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  TextStyle get _inputTextStyle => GoogleFonts.notoSansKr(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white);
+  TextStyle get _inputTextStyle => GoogleFonts.notoSansKr(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: Colors.white,
+  );
+
   /// 플레이스홀더(또는 이미지...)와 동일한 굵기
-  TextStyle get _inputHintStyle => GoogleFonts.notoSansKr(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.grey.shade500);
-  TextStyle get _inputLabelStyle => GoogleFonts.notoSansKr(fontSize: 10, fontWeight: FontWeight.w400, letterSpacing: 1, color: Colors.grey.shade300);
+  TextStyle get _inputHintStyle => GoogleFonts.notoSansKr(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: Colors.grey.shade500,
+  );
+  TextStyle get _inputLabelStyle => GoogleFonts.notoSansKr(
+    fontSize: 10,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 1,
+    color: Colors.grey.shade300,
+  );
 
   Widget _buildSectionHeader(String title) {
     return Text(
@@ -920,21 +1063,35 @@ class _EditorScreenState extends State<EditorScreen> {
   void _ensureDefaultSlogan(AppProvider provider, CardData data) {
     if (data.slogan.isNotEmpty || _sloganDefaultSet) return;
     _sloganDefaultSet = true;
-    _pendingDefaultSlogan = AppConstants.defaultSlogans[Random().nextInt(AppConstants.defaultSlogans.length)];
+    _pendingDefaultSlogan = AppConstants
+        .defaultSlogans[Random().nextInt(AppConstants.defaultSlogans.length)];
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && provider.currentCardData.slogan.isEmpty && _pendingDefaultSlogan != null) {
-        provider.updateCardData(provider.currentCardData.copyWith(slogan: _pendingDefaultSlogan!));
+      if (mounted &&
+          provider.currentCardData.slogan.isEmpty &&
+          _pendingDefaultSlogan != null) {
+        provider.updateCardData(
+          provider.currentCardData.copyWith(slogan: _pendingDefaultSlogan!),
+        );
       }
     });
   }
 
-  Widget _buildSloganField(BuildContext context, AppProvider provider, CardData data, Map<String, String> t) {
+  Widget _buildSloganField(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+    Map<String, String> t,
+  ) {
     _ensureDefaultSlogan(provider, data);
     const assistControlYOffset = -10.0;
-    final displayValue = data.slogan.isEmpty ? (_pendingDefaultSlogan ?? '') : data.slogan;
+    final displayValue = data.slogan.isEmpty
+        ? (_pendingDefaultSlogan ?? '')
+        : data.slogan;
     if (_sloganController.text != displayValue) {
       _sloganController.text = displayValue;
-      _sloganController.selection = TextSelection.collapsed(offset: displayValue.length);
+      _sloganController.selection = TextSelection.collapsed(
+        offset: displayValue.length,
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -943,18 +1100,35 @@ class _EditorScreenState extends State<EditorScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-                child: TextField(
-                  controller: _sloganController,
-                  onChanged: (value) => provider.updateCardData(provider.currentCardData.copyWith(slogan: value)),
+              child: TextField(
+                controller: _sloganController,
+                inputFormatters: [_koreanOnlySloganFormatter],
+                onChanged: (value) => provider.updateCardData(
+                  provider.currentCardData.copyWith(slogan: value),
+                ),
                 decoration: InputDecoration(
-                  hintText: displayValue.isEmpty ? t['placeholders.slogan'] : null,
-                  hintStyle: GoogleFonts.notoSansKr(fontSize: 18, fontStyle: FontStyle.italic, color: Colors.grey.shade500),
+                  hintText: displayValue.isEmpty
+                      ? t['placeholders.slogan']
+                      : null,
+                  hintStyle: GoogleFonts.notoSansKr(
+                    fontSize: 18,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey.shade500,
+                  ),
                   border: const UnderlineInputBorder(),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade600)),
-                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.primary, width: 1.5)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey.shade600),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppTheme.primary, width: 1.5),
+                  ),
                   filled: false,
                 ),
-                style: GoogleFonts.notoSansKr(fontSize: 18, fontStyle: FontStyle.italic, color: Colors.white),
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 18,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.white,
+                ),
               ),
             ),
             const SizedBox(width: 6),
@@ -967,7 +1141,11 @@ class _EditorScreenState extends State<EditorScreen> {
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
                     setState(() => _sloganKoreanMode = !_sloganKoreanMode);
-                    _showLanguageModeToastNearToggle(_sloganKoreanMode ? '한글 모드' : '영문 모드');
+                    _showLanguageModeToastNearToggle(
+                      _sloganKoreanMode
+                          ? t['koreanModeOn']!
+                          : t['englishModeOn']!,
+                    );
                   },
                   child: SizedBox(
                     key: _languageModeToggleKey,
@@ -975,7 +1153,10 @@ class _EditorScreenState extends State<EditorScreen> {
                     height: 26, // 기존 약 20px 칩 대비 약 1.3배 탭 영역
                     child: Center(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(6),
@@ -1008,24 +1189,44 @@ class _EditorScreenState extends State<EditorScreen> {
                             provider.currentCardData,
                             koreanMode: _sloganKoreanMode,
                           );
-                          if (mounted && suggested != null && suggested.isNotEmpty) {
-                            provider.updateCardData(provider.currentCardData.copyWith(slogan: suggested));
+                          if (mounted &&
+                              suggested != null &&
+                              suggested.isNotEmpty) {
+                            provider.updateCardData(
+                              provider.currentCardData.copyWith(
+                                slogan: suggested,
+                              ),
+                            );
                           }
                         } finally {
                           if (mounted) setState(() => _aiSloganLoading = false);
                         }
                       },
                 icon: _aiSloganLoading
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Icon(Icons.auto_awesome, size: 18, color: AppTheme.primary),
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        Icons.auto_awesome,
+                        size: 18,
+                        color: AppTheme.primary,
+                      ),
                 label: Text(
-                  'AI 추천',
-                  style: GoogleFonts.notoSansKr(fontSize: 12, fontWeight: FontWeight.w500),
+                  t['aiRecommend']!,
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.primary,
                   side: const BorderSide(color: AppTheme.primary),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -1038,7 +1239,10 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   /// AI(또는 기본 목록)로 슬로건 추천. API 키 없으면 기본 슬로건 중 하나 반환.
-  Future<String?> _fetchAiSlogan(CardData data, {required bool koreanMode}) async {
+  Future<String?> _fetchAiSlogan(
+    CardData data, {
+    required bool koreanMode,
+  }) async {
     const fallbackEnglishSlogans = <String>[
       'Your next story starts here.',
       'Connect beyond first impressions.',
@@ -1065,9 +1269,13 @@ class _EditorScreenState extends State<EditorScreen> {
     }
     if (koreanMode) {
       if (AppConstants.defaultSlogans.isEmpty) return null;
-      return AppConstants.defaultSlogans[Random().nextInt(AppConstants.defaultSlogans.length)];
+      return AppConstants.defaultSlogans[Random().nextInt(
+        AppConstants.defaultSlogans.length,
+      )];
     }
-    return fallbackEnglishSlogans[Random().nextInt(fallbackEnglishSlogans.length)];
+    return fallbackEnglishSlogans[Random().nextInt(
+      fallbackEnglishSlogans.length,
+    )];
   }
 
   Widget _buildTextField({
@@ -1080,18 +1288,19 @@ class _EditorScreenState extends State<EditorScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label.toUpperCase(),
-          style: _inputLabelStyle,
-        ),
+        Text(label.toUpperCase(), style: _inputLabelStyle),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           onChanged: (value) => onChanged(value),
           decoration: InputDecoration(
             border: const UnderlineInputBorder(),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade600)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.primary, width: 1.5)),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.grey.shade600),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: AppTheme.primary, width: 1.5),
+            ),
             isDense: true,
             filled: false,
           ),
@@ -1115,7 +1324,11 @@ class _EditorScreenState extends State<EditorScreen> {
         color: isHex ? _parseThemeColor(theme) : const Color(0xFF1a1c1e),
         image: !isHex && theme.isNotEmpty
             ? DecorationImage(
-                image: NetworkImage(theme),
+                image: ResizeImage(
+                  NetworkImage(theme),
+                  width: 104,
+                  height: 104,
+                ),
                 fit: BoxFit.cover,
                 onError: (_, _) {},
               )
@@ -1134,7 +1347,11 @@ class _EditorScreenState extends State<EditorScreen> {
                 fontWeight: FontWeight.w800,
                 color: Colors.white,
                 shadows: [
-                  Shadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 2, offset: const Offset(0, 1)),
+                  Shadow(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
                 ],
               ),
             ),
@@ -1168,7 +1385,7 @@ class _EditorScreenState extends State<EditorScreen> {
           shape: BoxShape.circle,
           border: Border.all(color: Colors.grey.shade200),
           image: DecorationImage(
-            image: NetworkImage(url),
+            image: ResizeImage(NetworkImage(url), width: 80, height: 80),
             fit: BoxFit.cover,
           ),
         ),
@@ -1205,26 +1422,40 @@ class _EditorScreenState extends State<EditorScreen> {
               if (hasImage)
                 _buildProfileImageThumb(data.profileImage!)
               else
-                Icon(Icons.add_photo_alternate, size: 40, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)),
+                Icon(
+                  Icons.add_photo_alternate,
+                  size: 40,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.7),
+                ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Logo or Photo',
-                  style: GoogleFonts.notoSansKr(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade200),
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade200,
+                  ),
                 ),
               ),
               if (hasImage)
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                  onPressed: () => provider.updateCardData(data.copyWith(profileImage: '')),
+                  onPressed: () =>
+                      provider.updateCardData(data.copyWith(profileImage: '')),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
               if (hasImage) const SizedBox(width: 8),
               OutlinedButton(
                 onPressed: () {
+                  final t = _getTexts(provider.settings.language);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('이미지 업로드 기능은 준비 중입니다. URL로 입력해주세요.')),
+                    SnackBar(
+                      content: Text(t['imageUploadComingSoon']!),
+                    ),
                   );
                 },
                 style: OutlinedButton.styleFrom(
@@ -1252,8 +1483,12 @@ class _EditorScreenState extends State<EditorScreen> {
               Expanded(
                 child: TextField(
                   controller: TextEditingController(text: displayUrl)
-                    ..selection = TextSelection.collapsed(offset: displayUrl.length),
-                  onChanged: (value) => provider.updateCardData(data.copyWith(profileImage: value)),
+                    ..selection = TextSelection.collapsed(
+                      offset: displayUrl.length,
+                    ),
+                  onChanged: (value) => provider.updateCardData(
+                    data.copyWith(profileImage: value),
+                  ),
                   decoration: InputDecoration(
                     hintText: t['placeholders.hotlink'],
                     hintStyle: _inputHintStyle,
@@ -1268,6 +1503,146 @@ class _EditorScreenState extends State<EditorScreen> {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  static const int _portfolioMaxBytes = 10 * 1024 * 1024; // 10MB
+
+  Future<void> _pickPortfolioFile(AppProvider provider, CardData data) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.single;
+    if (file.bytes == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('파일을 읽을 수 없습니다. 다시 선택해 주세요.')),
+        );
+      }
+      return;
+    }
+    if (file.size > _portfolioMaxBytes) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('파일 크기는 10MB 이하여야 합니다.')),
+        );
+      }
+      return;
+    }
+    final mime = _mimeForExtension(file.extension ?? 'bin');
+    final base64 = base64Encode(file.bytes!);
+    provider.updateCardData(data.copyWith(
+      portfolioFile: 'data:$mime;base64,$base64',
+      portfolioFileName: file.name,
+    ));
+    if (mounted) setState(() {});
+  }
+
+  String _mimeForExtension(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'pdf': return 'application/pdf';
+      case 'doc': return 'application/msword';
+      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'jpg':
+      case 'jpeg': return 'image/jpeg';
+      case 'png': return 'image/png';
+      default: return 'application/octet-stream';
+    }
+  }
+
+  Widget _buildPortfolioInput(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+    String placeholder,
+  ) {
+    final urlController = _getFormController('portfolioUrl', data.portfolioUrl ?? '');
+    final hasFile = (data.portfolioFile ?? '').isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Row(
+            children: [
+              Icon(Icons.folder_open, size: 18, color: Colors.grey.shade600),
+              const SizedBox(width: 6),
+              Text(
+                '포트폴리오',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              Text(
+                '  Portfolio',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: urlController,
+                onChanged: (v) => provider.updateCardData(data.copyWith(portfolioUrl: v)),
+                decoration: InputDecoration(
+                  hintText: placeholder,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: AppTheme.primary.withValues(alpha: 0.3), width: 2),
+                  ),
+                ),
+                style: GoogleFonts.notoSansKr(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(hasFile ? Icons.attach_file : Icons.add_circle_outline, size: 24, color: Colors.grey.shade600),
+              onPressed: () => _pickPortfolioFile(provider, data),
+              tooltip: '파일 첨부 (PDF, DOC, DOCX, JPG, PNG / 최대 10MB)',
+            ),
+          ],
+        ),
+        if (hasFile)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle, size: 14, color: Colors.green.shade600),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    data.portfolioFileName ?? '파일 첨부됨',
+                    style: TextStyle(fontSize: 12, color: Colors.green.shade700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => provider.updateCardData(data.copyWith(portfolioFile: '', portfolioFileName: '')),
+                  child: const Text('제거'),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -1311,15 +1686,24 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  void _showSaveDialog(BuildContext context, AppProvider provider) {
+  void _showSaveDialog(
+    BuildContext context,
+    AppProvider provider,
+    Map<String, String> t,
+  ) {
     final activeId = provider.activeProfileId;
     final activeProfile = activeId == null
         ? null
         : provider.savedProfiles.where((p) => p.id == activeId).firstOrNull;
     final isUpdateMode = activeProfile != null;
-    final nameController = TextEditingController(text: activeProfile?.name ?? '');
+    final nameController = TextEditingController(
+      text: activeProfile?.name ?? '',
+    );
 
-    Future<void> saveAs(BuildContext dialogContext, {required bool updateCurrent}) async {
+    Future<void> saveAs(
+      BuildContext dialogContext, {
+      required bool updateCurrent,
+    }) async {
       final name = nameController.text.trim();
       if (name.isEmpty) return;
       final targetId = updateCurrent && activeProfile != null
@@ -1329,51 +1713,66 @@ class _EditorScreenState extends State<EditorScreen> {
         Profile(id: targetId, name: name, data: provider.currentCardData),
       );
       if (!dialogContext.mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(dialogContext);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _resetEditorToNormalView();
       });
-      ScaffoldMessenger.of(dialogContext).showSnackBar(
-        SnackBar(
-          content: Text(
-            updateCurrent ? '현재 프로필이 업데이트되었습니다.' : '새 프로필로 저장되었습니다.',
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              updateCurrent
+                  ? t['profileUpdatedToast']!
+                  : t['profileSavedAsNewToast']!,
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(isUpdateMode ? '프로필 업데이트 또는 새 저장' : '새 프로필 저장'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isUpdateMode
-                  ? '현재 프로필을 덮어쓸지, 새 프로필로 저장할지 선택하세요.'
-                  : '프로필 이름을 입력하고 새로 저장하세요.',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 12),
-            TextField(
+      builder: (dialogContext) {
+        final mq = MediaQuery.of(dialogContext);
+        final maxW = (mq.size.width - 48).clamp(260.0, 320.0);
+        return AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          scrollable: true,
+          title: Text(
+            isUpdateMode ? t['saveDialogTitleUpdateOrNew']! : t['saveDialogTitleNew']!,
+          ),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxW),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isUpdateMode
+                      ? t['saveDialogDescUpdateOrNew']!
+                      : t['saveDialogDescNewOnly']!,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 12),
+                TextField(
               controller: nameController,
               decoration: InputDecoration(
-                labelText: 'Profile Name',
-                hintText: 'e.g. Work V2',
+                labelText: t['profileNameLabel'],
+                hintText: t['profileNameHint'],
                 labelStyle: GoogleFonts.notoSansKr(),
                 hintStyle: GoogleFonts.notoSansKr(color: Colors.grey),
               ),
               style: GoogleFonts.notoSansKr(fontSize: 16),
               autofocus: true,
             ),
-          ],
-        ),
+              ],
+            ),
+          ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('취소'),
+            child: Text(t['cancel']!),
           ),
           if (isUpdateMode)
             OutlinedButton(
@@ -1382,7 +1781,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 foregroundColor: AppTheme.primary,
                 side: const BorderSide(color: AppTheme.primary),
               ),
-              child: const Text('새 프로필로 저장'),
+              child: Text(t['saveAsNew']!),
             ),
           OutlinedButton(
             onPressed: () => saveAs(dialogContext, updateCurrent: isUpdateMode),
@@ -1390,10 +1789,13 @@ class _EditorScreenState extends State<EditorScreen> {
               foregroundColor: AppTheme.primary,
               side: const BorderSide(color: AppTheme.primary),
             ),
-            child: Text(isUpdateMode ? '현재 프로필 업데이트' : '새 프로필 저장'),
+            child: Text(
+              isUpdateMode ? t['updateCurrentProfile']! : t['saveAsNew']!,
+            ),
           ),
         ],
-      ),
+      );
+    },
     );
   }
 
@@ -1419,6 +1821,23 @@ class _EditorScreenState extends State<EditorScreen> {
         'contactInfo': '연락처',
         'links': '링크 및 SNS',
         'address': '주소',
+        'livePreview': '실시간 미리보기',
+        'cardInfoInput': '명함 정보 입력',
+        'aiRecommend': 'AI 추천',
+        'koreanModeOn': '한글 모드',
+        'englishModeOn': '영문 모드',
+        'imageUploadComingSoon': '이미지 업로드 기능은 준비 중입니다. URL로 입력해주세요.',
+        'profileUpdatedToast': '현재 프로필이 업데이트되었습니다.',
+        'profileSavedAsNewToast': '새 프로필로 저장되었습니다.',
+        'saveDialogTitleUpdateOrNew': '프로필 업데이트 또는 새 저장',
+        'saveDialogTitleNew': '새 프로필 저장',
+        'saveDialogDescUpdateOrNew': '현재 프로필을 덮어쓸지, 새 프로필로 저장할지 선택하세요.',
+        'saveDialogDescNewOnly': '프로필 이름을 입력하고 새로 저장하세요.',
+        'profileNameLabel': '프로필 이름',
+        'profileNameHint': '예: Work V2',
+        'cancel': '취소',
+        'saveAsNew': '새 프로필로 저장',
+        'updateCurrentProfile': '현재 프로필 업데이트',
         'uploadBtn': '변경',
         'placeholders.slogan': '당신의 이야기를 들려주세요...',
         'placeholders.phone': '전화번호',
@@ -1428,7 +1847,7 @@ class _EditorScreenState extends State<EditorScreen> {
         'placeholders.website': '웹사이트 URL',
         'placeholders.linkedin': 'LinkedIn 프로필',
         'placeholders.shareLink': '커스텀 공유 링크',
-        'placeholders.portfolio': '포트폴리오 링크 입력 (Pro)',
+        'placeholders.portfolio': '링크 입력 (예: www.example.com)',
         'placeholders.address': '주소 입력',
         'placeholders.hotlink': '또는 이미지 URL 붙여넣기...',
       };
@@ -1447,6 +1866,23 @@ class _EditorScreenState extends State<EditorScreen> {
         'contactInfo': 'Contact Info',
         'links': 'Links & SNS',
         'address': 'Address',
+        'livePreview': 'Live Preview',
+        'cardInfoInput': 'Edit Card Info',
+        'aiRecommend': 'AI Suggest',
+        'koreanModeOn': 'Korean mode',
+        'englishModeOn': 'English mode',
+        'imageUploadComingSoon': 'Image upload is coming soon. Please use URL input.',
+        'profileUpdatedToast': 'Current profile has been updated.',
+        'profileSavedAsNewToast': 'Saved as a new profile.',
+        'saveDialogTitleUpdateOrNew': 'Update current profile or save as new',
+        'saveDialogTitleNew': 'Save as New Profile',
+        'saveDialogDescUpdateOrNew': 'Choose whether to overwrite current profile or save as a new one.',
+        'saveDialogDescNewOnly': 'Enter a profile name and save as new.',
+        'profileNameLabel': 'Profile Name',
+        'profileNameHint': 'e.g. Work V2',
+        'cancel': 'Cancel',
+        'saveAsNew': 'Save as New',
+        'updateCurrentProfile': 'Update Current Profile',
         'uploadBtn': 'Change',
         'placeholders.slogan': 'Your story begins here...',
         'placeholders.phone': 'Phone Number',
@@ -1456,7 +1892,7 @@ class _EditorScreenState extends State<EditorScreen> {
         'placeholders.website': 'Website URL',
         'placeholders.linkedin': 'LinkedIn Profile',
         'placeholders.shareLink': 'Custom Share Link',
-        'placeholders.portfolio': 'Enter Portfolio URL (Pro)',
+        'placeholders.portfolio': 'Enter link (e.g. www.example.com)',
         'placeholders.address': 'Physical Address',
         'placeholders.hotlink': 'Or paste image URL (Hotlink)...',
       };
@@ -1464,4 +1900,3 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 }
-

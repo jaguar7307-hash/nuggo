@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/rendering.dart'
+    show debugPaintBaselinesEnabled, debugPaintSizeEnabled;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'providers/app_provider.dart';
@@ -14,7 +18,9 @@ import 'widgets/header.dart';
 import 'widgets/bottom_nav.dart';
 
 void _showQrDialog(BuildContext context, AppProvider provider) {
-  final profile = provider.selectedProfile ?? (provider.savedProfiles.isNotEmpty ? provider.savedProfiles.first : null);
+  final profile =
+      provider.selectedProfile ??
+      (provider.savedProfiles.isNotEmpty ? provider.savedProfiles.first : null);
   String url = profile?.data.shareLink.trim() ?? '';
   if (url.isEmpty) url = 'https://nuggo.me';
   if (!url.startsWith('http')) url = 'https://$url';
@@ -52,7 +58,12 @@ void _showQrDialog(BuildContext context, AppProvider provider) {
   );
 }
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SharedPreferences.getInstance();
+  debugPaintBaselinesEnabled = false;
+  debugPaintSizeEnabled = false;
+  GoogleFonts.config.allowRuntimeFetching = true;
   runApp(
     ChangeNotifierProvider(
       create: (_) => AppProvider()..initialize(),
@@ -66,7 +77,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final darkMode = context.select<AppProvider, bool>((p) => p.settings.darkMode);
+    debugPaintBaselinesEnabled = false;
+    debugPaintSizeEnabled = false;
+    final darkMode = context.select<AppProvider, bool>(
+      (p) => p.settings.darkMode,
+    );
     return MaterialApp(
       title: 'NUGGO',
       debugShowCheckedModeBanner: false,
@@ -90,24 +105,38 @@ class _MainScreenState extends State<MainScreen> {
   List<Widget> _buildLazyTabChildren(int activeIndex) {
     _builtTabIndices.add(activeIndex);
     return [
-      _builtTabIndices.contains(0) ? const ProfileScreen() : const SizedBox.shrink(),
-      _builtTabIndices.contains(1) ? const EditorScreen() : const SizedBox.shrink(),
-      _builtTabIndices.contains(2) ? const WalletScreen() : const SizedBox.shrink(),
-      _builtTabIndices.contains(3) ? const AccountScreen() : const SizedBox.shrink(),
-      _builtTabIndices.contains(4) ? const SettingsScreen() : const SizedBox.shrink(),
+      _builtTabIndices.contains(0)
+          ? const ProfileScreen()
+          : const SizedBox.shrink(),
+      _builtTabIndices.contains(1)
+          ? const EditorScreen()
+          : const SizedBox.shrink(),
+      _builtTabIndices.contains(2)
+          ? const WalletScreen()
+          : const SizedBox.shrink(),
+      _builtTabIndices.contains(3)
+          ? const AccountScreen()
+          : const SizedBox.shrink(),
+      _builtTabIndices.contains(4)
+          ? const SettingsScreen()
+          : const SizedBox.shrink(),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.read<AppProvider>();
-    final ui = context.select<AppProvider, ({ViewType activeView, bool isPhoneFrameMode, bool darkMode})>(
-      (p) => (
-        activeView: p.activeView,
-        isPhoneFrameMode: p.isPhoneFrameMode,
-        darkMode: p.settings.darkMode,
-      ),
-    );
+    final ui = context
+        .select<
+          AppProvider,
+          ({ViewType activeView, bool isPhoneFrameMode, bool darkMode})
+        >(
+          (p) => (
+            activeView: p.activeView,
+            isPhoneFrameMode: p.isPhoneFrameMode,
+            darkMode: p.settings.darkMode,
+          ),
+        );
     if (!kIsWeb) {
       return _buildAppContent(
         context,
@@ -167,10 +196,7 @@ class _MainScreenState extends State<MainScreen> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).scaffoldBackgroundColor,
                   borderRadius: BorderRadius.circular(56),
-                  border: Border.all(
-                    color: const Color(0xFF2d2d2d),
-                    width: 8,
-                  ),
+                  border: Border.all(color: const Color(0xFF2d2d2d), width: 8),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.3),
@@ -204,7 +230,7 @@ class _MainScreenState extends State<MainScreen> {
     double? maxWidth,
     double? maxHeight,
   }) {
-        final content = activeView == ViewType.preview
+    final content = activeView == ViewType.preview
         ? _buildCurrentScreen(ViewType.preview)
         : Scaffold(
             body: Stack(
@@ -213,17 +239,23 @@ class _MainScreenState extends State<MainScreen> {
                   children: [
                     Header(
                       activeView: activeView,
-                      onLogoClick: () => provider.setActiveView(ViewType.myCards),
-                      onSettingsClick: () => provider.setActiveView(ViewType.settings),
+                      onLogoClick: () =>
+                          provider.setActiveView(ViewType.myCards),
+                      onSettingsClick: () =>
+                          provider.setActiveView(ViewType.settings),
                     ),
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.only(
-                          bottom: AppTheme.barHeight + MediaQuery.of(context).padding.bottom,
+                          bottom:
+                              AppTheme.barHeight +
+                              MediaQuery.of(context).padding.bottom,
                         ),
                         child: IndexedStack(
                           index: _tabIndex(activeView),
-                          children: _buildLazyTabChildren(_tabIndex(activeView)),
+                          children: _buildLazyTabChildren(
+                            _tabIndex(activeView),
+                          ),
                         ),
                       ),
                     ),
@@ -233,7 +265,10 @@ class _MainScreenState extends State<MainScreen> {
                   Positioned(
                     left: 0,
                     right: 0,
-                    bottom: AppTheme.barHeight + MediaQuery.of(context).padding.bottom + 16,
+                    bottom:
+                        AppTheme.barHeight +
+                        MediaQuery.of(context).padding.bottom +
+                        16,
                     child: Center(
                       child: Material(
                         elevation: 8,
@@ -246,7 +281,11 @@ class _MainScreenState extends State<MainScreen> {
                           child: const SizedBox(
                             width: 56,
                             height: 56,
-                            child: Icon(Icons.qr_code_2, color: Colors.white, size: 28),
+                            child: Icon(
+                              Icons.qr_code_2,
+                              color: Colors.white,
+                              size: 28,
+                            ),
                           ),
                         ),
                       ),
@@ -266,11 +305,7 @@ class _MainScreenState extends State<MainScreen> {
           );
 
     if (maxWidth != null && maxHeight != null) {
-      return SizedBox(
-        width: maxWidth,
-        height: maxHeight,
-        child: content,
-      );
+      return SizedBox(width: maxWidth, height: maxHeight, child: content);
     }
     return content;
   }
@@ -278,12 +313,18 @@ class _MainScreenState extends State<MainScreen> {
   /// 하단 탭 5개 순서: 내 명함, 에디터, 지갑, 계정, 설정. (preview는 풀스크린으로 별도)
   static int _tabIndex(ViewType view) {
     switch (view) {
-      case ViewType.myCards: return 0;
-      case ViewType.editor: return 1;
-      case ViewType.wallet: return 2;
-      case ViewType.account: return 3;
-      case ViewType.settings: return 4;
-      case ViewType.preview: return 0;
+      case ViewType.myCards:
+        return 0;
+      case ViewType.editor:
+        return 1;
+      case ViewType.wallet:
+        return 2;
+      case ViewType.account:
+        return 3;
+      case ViewType.settings:
+        return 4;
+      case ViewType.preview:
+        return 0;
     }
   }
 
@@ -307,7 +348,9 @@ class _DisplayModeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? Theme.of(context).colorScheme.primary : Colors.grey.shade300,
+      color: selected
+          ? Theme.of(context).colorScheme.primary
+          : Colors.grey.shade300,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,

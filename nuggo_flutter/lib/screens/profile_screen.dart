@@ -22,12 +22,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color _bgDark = Color(0xFF101822);
   static const Color _textMuted = Color(0xFF64748B);
 
+  String _tr(String language, String ko, String en) {
+    return language == 'en' ? en : ko;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
+        final language = provider.settings.language;
         final profiles = provider.savedProfiles;
-        if (profiles.isEmpty) return _buildEmptyState(context);
+        if (profiles.isEmpty) return _buildEmptyState(context, language);
 
         final selected = _resolveSelectedProfile(profiles);
         final views = _mockViewCount(selected);
@@ -42,15 +47,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionLabel('PROFILES'),
+                  _buildSectionLabel(_tr(language, '프로필', 'PROFILES')),
                   const SizedBox(height: 12),
                   _buildProfilesRow(context, provider, profiles),
                   const SizedBox(height: 24),
                   _buildMainCard(context, provider, selected, views, sends),
                   const SizedBox(height: 32),
-                  _buildRecentSendHistory(),
+                  _buildRecentSendHistory(language),
                   const SizedBox(height: 24),
-                  _buildInsightAnalysis(views, sends),
+                  _buildInsightAnalysis(views, sends, language),
                 ],
               ),
             ),
@@ -60,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, String language) {
     return Container(
       color: _bgDark,
       child: Center(
@@ -70,7 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icon(Icons.contact_page, size: 96, color: Colors.grey.shade600),
             const SizedBox(height: 20),
             Text(
-              '저장된 명함이 없습니다',
+              _tr(language, '저장된 명함이 없습니다', 'No saved cards yet'),
               style: GoogleFonts.manrope(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -79,17 +84,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '에디터에서 프로필을 생성해 주세요',
+              _tr(
+                language,
+                '에디터에서 프로필을 생성해 주세요',
+                'Create a profile in the editor',
+              ),
               style: GoogleFonts.manrope(fontSize: 14, color: _textMuted),
             ),
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: () => context.read<AppProvider>().setActiveView(ViewType.editor),
+              onPressed: () =>
+                  context.read<AppProvider>().setActiveView(ViewType.editor),
               style: FilledButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('에디터로 이동'),
+              child: Text(_tr(language, '에디터로 이동', 'Go to Editor')),
             ),
           ],
         ),
@@ -106,10 +116,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         letterSpacing: 2,
         color: _textMuted,
       ),
+      overflow: TextOverflow.ellipsis,
     );
   }
 
-  Widget _buildProfilesRow(BuildContext context, AppProvider provider, List<Profile> profiles) {
+  Widget _buildProfilesRow(
+    BuildContext context,
+    AppProvider provider,
+    List<Profile> profiles,
+  ) {
     return SizedBox(
       height: 100,
       child: ListView(
@@ -118,7 +133,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         clipBehavior: Clip.none,
         children: [
           ...profiles.map((profile) {
-            final isSelected = profile.id == _selectedProfileId || (_selectedProfileId == null && profile.id == profiles.first.id);
+            final isSelected =
+                profile.id == _selectedProfileId ||
+                (_selectedProfileId == null && profile.id == profiles.first.id);
             return Padding(
               padding: const EdgeInsets.only(right: 16),
               child: _ProfilePill(
@@ -131,21 +148,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             );
           }),
-          _AddProfilePill(onTap: () {
-            provider.createNewProfile();
-            provider.requestScrollToBackgroundTheme();
-            provider.setActiveView(ViewType.editor);
-          }),
+          _AddProfilePill(
+            onTap: () {
+              provider.createNewProfile();
+              provider.requestScrollToBackgroundTheme();
+              provider.setActiveView(ViewType.editor);
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMainCard(BuildContext context, AppProvider provider, Profile selected, int views, int sends) {
+  Widget _buildMainCard(
+    BuildContext context,
+    AppProvider provider,
+    Profile selected,
+    int views,
+    int sends,
+  ) {
     final data = selected.data;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardWidth = constraints.maxWidth * 0.52;
+        // 모바일(좁은 폭)은 기존 비율을 고정하고, 넓은 PC 폭에서만 카드를 축소
+        final isWideDesktop = constraints.maxWidth >= 560;
+        final cardWidth = constraints.maxWidth * (isWideDesktop ? 0.42 : 0.52);
+        final cardHeight = cardWidth * (_cardAspectHeight / _cardAspectWidth);
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -154,37 +182,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 SizedBox(
                   width: cardWidth,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      _buildCompactCard(context, provider, data),
-                      Positioned(
-                        bottom: -20,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              customBorder: const CircleBorder(),
-                              onTap: () {
-                                provider.loadProfile(selected);
-                                provider.setActiveView(ViewType.preview);
-                              },
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.grey.shade400),
+                  child: SizedBox(
+                    height: cardHeight + 20,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.topCenter,
+                      children: [
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: _buildCompactCard(context, provider, data),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: () {
+                                  provider.loadProfile(selected);
+                                  provider.setActiveView(ViewType.preview);
+                                },
+                                child: SizedBox(
+                                  width: 80,
+                                  height: 80,
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.grey.shade400,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.visibility_outlined,
+                                        color: Colors.grey.shade600,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                child: Icon(Icons.visibility_outlined, color: Colors.grey.shade600, size: 18),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 24),
@@ -215,11 +265,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _SideActionButton(icon: Icons.send, onTap: () {}, filled: true),
+                    _SideActionButton(
+                      icon: Icons.send,
+                      onTap: () {},
+                      filled: true,
+                    ),
                     const SizedBox(height: 16),
-                    _SideActionButton(icon: Icons.share, onTap: () => _shareCard(context, provider, selected)),
+                    _SideActionButton(
+                      icon: Icons.share,
+                      onTap: () => _shareCard(context, provider, selected),
+                    ),
                     const SizedBox(height: 16),
-                    _SideActionButton(icon: Icons.nfc, onTap: () {}, showDot: true),
+                    _SideActionButton(
+                      icon: Icons.nfc,
+                      onTap: () {},
+                      showDot: true,
+                    ),
                   ],
                 ),
               ],
@@ -235,7 +296,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const double _cardAspectHeight = 388.08;
 
   /// 에디터 명함(DigitalCard) 레이아웃·내용을 스케일만 맞춰 그대로 표시 (배경/주소/아이콘 동일).
-  Widget _buildCompactCard(BuildContext context, AppProvider provider, CardData data) {
+  Widget _buildCompactCard(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+  ) {
     return AspectRatio(
       aspectRatio: _cardAspectWidth / _cardAspectHeight,
       child: Container(
@@ -270,10 +335,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return n.toString();
   }
 
-  Widget _buildRecentSendHistory() {
+  Widget _buildRecentSendHistory(String language) {
     final mockItems = [
-      ('David Chen', 'Sent via NFC Tag', '2 mins ago'),
-      ('Sarah Jenkins', 'Sent via KakaoTalk', '1 hour ago'),
+      (
+        'David Chen',
+        _tr(language, 'NFC 태그로 전송', 'Sent via NFC Tag'),
+        _tr(language, '2분 전', '2 mins ago'),
+      ),
+      (
+        'Sarah Jenkins',
+        _tr(language, '카카오톡으로 전송', 'Sent via KakaoTalk'),
+        _tr(language, '1시간 전', '1 hour ago'),
+      ),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,11 +354,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildSectionLabel('RECENT SEND HISTORY'),
+            Expanded(
+              child: _buildSectionLabel(_tr(language, '최근 전송 내역', 'RECENT SEND HISTORY')),
+            ),
             GestureDetector(
               onTap: () {},
               child: Text(
-                'VIEW ALL',
+                _tr(language, '전체 보기', 'VIEW ALL'),
                 style: GoogleFonts.manrope(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
@@ -297,24 +372,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        ...mockItems.map((e) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _RecentSendTile(name: e.$1, subtitle: e.$2, time: e.$3),
-        )),
+        ...mockItems.map(
+          (e) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _RecentSendTile(name: e.$1, subtitle: e.$2, time: e.$3),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildInsightAnalysis(int views, int sends) {
+  Widget _buildInsightAnalysis(int views, int sends, String language) {
     const weekHeights = [0.3, 0.45, 0.85, 0.6, 0.55, 0.4, 0.35];
-    const weekLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final weekLabels = language == 'en'
+        ? const ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+        : const ['월', '화', '수', '목', '금', '토', '일'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildSectionLabel('INSIGHT ANALYSIS'),
+            Expanded(
+              child: _buildSectionLabel(_tr(language, '인사이트 분석', 'INSIGHT ANALYSIS')),
+            ),
             Icon(Icons.trending_up, size: 18, color: _textMuted),
           ],
         ),
@@ -334,31 +415,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('TOTAL VIEWS', style: _insightLabelStyle()),
+                        Text(
+                          _tr(language, '총 조회수', 'TOTAL VIEWS'),
+                          style: _insightLabelStyle(),
+                        ),
                         const SizedBox(height: 4),
                         Text('${views + 16}', style: _insightValueStyle()),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.arrow_upward, size: 12, color: Colors.green.shade400),
+                            Icon(
+                              Icons.arrow_upward,
+                              size: 12,
+                              color: Colors.green.shade400,
+                            ),
                             const SizedBox(width: 2),
-                            Text('12%', style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade400)),
+                            Text(
+                              '12%',
+                              style: GoogleFonts.manrope(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade400,
+                              ),
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  Container(width: 1, height: 48, color: Colors.white.withValues(alpha: 0.1)),
+                  Container(
+                    width: 1,
+                    height: 48,
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('SUCCESS RATE', style: _insightLabelStyle()),
+                        Text(
+                          _tr(language, '성공률', 'SUCCESS RATE'),
+                          style: _insightLabelStyle(),
+                        ),
                         const SizedBox(height: 4),
-                        Text('98%', style: _insightValueStyle().copyWith(color: AppTheme.primary)),
+                        Text(
+                          '98%',
+                          style: _insightValueStyle().copyWith(
+                            color: AppTheme.primary,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text('TOP PERFORMANCE', style: _insightLabelStyle()),
+                        Text(
+                          _tr(language, '최고 성과', 'TOP PERFORMANCE'),
+                          style: _insightLabelStyle(),
+                        ),
                       ],
                     ),
                   ),
@@ -367,15 +477,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.only(top: 16),
-                decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08)))),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('WEEKLY ACTIVITY', style: _insightLabelStyle()),
-                        Text('Mon - Sun', style: GoogleFonts.manrope(fontSize: 9, color: _textMuted)),
+                        Expanded(
+                          child: Text(
+                            _tr(language, '주간 활동', 'WEEKLY ACTIVITY'),
+                            style: _insightLabelStyle(),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          _tr(language, '월 - 일', 'Mon - Sun'),
+                          style: GoogleFonts.manrope(
+                            fontSize: 9,
+                            color: _textMuted,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -385,17 +513,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: List.generate(7, (i) {
                           final isHighlight = i == 2;
-                          final barHeight = 96 * 0.25 + (96 * 0.6 * weekHeights[i]);
+                          final barHeight =
+                              96 * 0.25 + (96 * 0.6 * weekHeights[i]);
                           return Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 2,
+                              ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   Container(
                                     height: barHeight,
                                     decoration: BoxDecoration(
-                                      color: isHighlight ? AppTheme.primary : Colors.white.withValues(alpha: 0.1),
+                                      color: isHighlight
+                                          ? AppTheme.primary
+                                          : Colors.white.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                   ),
@@ -405,7 +538,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     style: GoogleFonts.manrope(
                                       fontSize: 8,
                                       fontWeight: FontWeight.bold,
-                                      color: isHighlight ? Colors.grey.shade400 : _textMuted,
+                                      color: isHighlight
+                                          ? Colors.grey.shade400
+                                          : _textMuted,
                                     ),
                                   ),
                                 ],
@@ -425,18 +560,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  TextStyle _insightLabelStyle() => GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5, color: _textMuted);
-  TextStyle _insightValueStyle() => GoogleFonts.manrope(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white);
+  TextStyle _insightLabelStyle() => GoogleFonts.manrope(
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 1.5,
+    color: _textMuted,
+  );
+  TextStyle _insightValueStyle() => GoogleFonts.manrope(
+    fontSize: 24,
+    fontWeight: FontWeight.w800,
+    color: Colors.white,
+  );
 
-  void _shareCard(BuildContext context, AppProvider provider, Profile selected) {
+  void _shareCard(
+    BuildContext context,
+    AppProvider provider,
+    Profile selected,
+  ) {
     String url = selected.data.shareLink.trim();
     if (url.isEmpty) url = 'https://nuggo.me';
     if (!url.startsWith('http')) url = 'https://$url';
-    final name = selected.data.fullName.isEmpty ? selected.name : selected.data.fullName;
-    Share.share(
-      url,
-      subject: '명함: $name',
-    );
+    final name = selected.data.fullName.isEmpty
+        ? selected.name
+        : selected.data.fullName;
+    final language = provider.settings.language;
+    final subject = _tr(language, '명함: $name', 'Card: $name');
+    SharePlus.instance.share(ShareParams(text: url, subject: subject));
   }
 
   Profile _resolveSelectedProfile(List<Profile> profiles) {
@@ -448,8 +597,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return profiles.first;
   }
 
-  int _mockViewCount(Profile profile) => (profile.id.hashCode.abs() % 900) + 384;
-  int _mockSendCount(Profile profile) => (profile.id.hashCode.abs() % 200) + 252;
+  int _mockViewCount(Profile profile) =>
+      (profile.id.hashCode.abs() % 900) + 384;
+  int _mockSendCount(Profile profile) =>
+      (profile.id.hashCode.abs() % 200) + 252;
 }
 
 class _ProfilePill extends StatelessWidget {
@@ -468,24 +619,36 @@ class _ProfilePill extends StatelessWidget {
     final data = profile.data;
     final profileSaveName = profile.name;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Opacity(
-        opacity: isSelected ? 1 : 0.6,
-        child: Container(
-          width: 64,
-          height: 96,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? AppTheme.primary : Colors.white.withValues(alpha: 0.2),
-              width: isSelected ? 2 : 1,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          mouseCursor: SystemMouseCursors.click,
+          borderRadius: BorderRadius.circular(12),
+          child: Opacity(
+            opacity: isSelected ? 1 : 0.6,
+            child: Container(
+              width: 64,
+              height: 96,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected
+                      ? AppTheme.primary
+                      : Colors.white.withValues(alpha: 0.2),
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: _MiniCardPreview(
+                  data: data,
+                  profileSaveName: profileSaveName,
+                ),
+              ),
             ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(11),
-            child: _MiniCardPreview(data: data, profileSaveName: profileSaveName),
           ),
         ),
       ),
@@ -522,7 +685,11 @@ class _MiniCardPreview extends StatelessWidget {
         color: isHex ? _parseThemeColor(theme) : null,
         image: !isHex && theme.isNotEmpty
             ? DecorationImage(
-                image: NetworkImage(theme),
+                image: ResizeImage(
+                  NetworkImage(theme),
+                  width: 128,
+                  height: 192,
+                ),
                 fit: BoxFit.cover,
               )
             : null,
@@ -548,7 +715,11 @@ class _MiniCardPreview extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                   shadows: [
-                    Shadow(color: Colors.black.withValues(alpha: 0.7), blurRadius: 4, offset: const Offset(0, 1)),
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
                   ],
                 ),
                 maxLines: 2,
@@ -570,18 +741,29 @@ class _AddProfilePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        width: 64,
-        height: 96,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
-          color: Colors.white.withValues(alpha: 0.05),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        mouseCursor: SystemMouseCursors.click,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 64,
+          height: 96,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1,
+            ),
+            color: Colors.white.withValues(alpha: 0.05),
+          ),
+          child: Icon(
+            Icons.add,
+            size: 32,
+            color: Colors.white.withValues(alpha: 0.3),
+          ),
         ),
-        child: Icon(Icons.add, size: 32, color: Colors.white.withValues(alpha: 0.3)),
       ),
     );
   }
@@ -632,9 +814,16 @@ class _ViewsSendsBlock extends StatelessWidget {
           children: [
             Icon(subtitleIcon, size: 12, color: subtitleColor),
             const SizedBox(width: 4),
-            Text(
-              subtitle,
-              style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.bold, color: subtitleColor),
+            Expanded(
+              child: Text(
+                subtitle,
+                style: GoogleFonts.manrope(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: subtitleColor,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -648,7 +837,11 @@ class _RecentSendTile extends StatelessWidget {
   final String subtitle;
   final String time;
 
-  const _RecentSendTile({required this.name, required this.subtitle, required this.time});
+  const _RecentSendTile({
+    required this.name,
+    required this.subtitle,
+    required this.time,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -664,20 +857,52 @@ class _RecentSendTile extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: Colors.grey.shade800, shape: BoxShape.circle),
-            child: Icon(Icons.person, color: Colors.white.withValues(alpha: 0.4), size: 22),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade800,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.person,
+              color: Colors.white.withValues(alpha: 0.4),
+              size: 22,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(name, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                Text(subtitle, style: GoogleFonts.manrope(fontSize: 11, color: const Color(0xFF64748B))),
+                Text(
+                  name,
+                  style: GoogleFonts.manrope(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.manrope(
+                    fontSize: 11,
+                    color: const Color(0xFF64748B),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
-          Text(time, style: GoogleFonts.manrope(fontSize: 10, color: const Color(0xFF64748B))),
+          Flexible(
+            child: Text(
+              time,
+              style: GoogleFonts.manrope(
+                fontSize: 10,
+                color: const Color(0xFF64748B),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -691,12 +916,19 @@ class _SideActionButton extends StatelessWidget {
   final bool showDot;
   final bool filled;
 
-  const _SideActionButton({required this.icon, required this.onTap, this.showDot = false, this.filled = false});
+  const _SideActionButton({
+    required this.icon,
+    required this.onTap,
+    this.showDot = false,
+    this.filled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: filled ? _accentOrange : const Color(0xFF101822).withValues(alpha: 0.4),
+      color: filled
+          ? _accentOrange
+          : const Color(0xFF101822).withValues(alpha: 0.4),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -706,7 +938,9 @@ class _SideActionButton extends StatelessWidget {
           height: 64,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: filled ? null : Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            border: filled
+                ? null
+                : Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: Stack(
             alignment: Alignment.center,
@@ -722,7 +956,9 @@ class _SideActionButton extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF101822).withValues(alpha: 0.5)),
+                      border: Border.all(
+                        color: const Color(0xFF101822).withValues(alpha: 0.5),
+                      ),
                     ),
                   ),
                 ),
@@ -733,4 +969,3 @@ class _SideActionButton extends StatelessWidget {
     );
   }
 }
-

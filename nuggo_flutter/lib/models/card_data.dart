@@ -29,6 +29,8 @@ class CardData {
   String theme;
   FontType font;
   String? portfolioUrl;
+  String? portfolioFile; // base64 data URL (data:application/pdf;base64,...)
+  String? portfolioFileName; // 원본 파일명 (표시용)
 
   CardData({
     this.profileImage,
@@ -47,6 +49,8 @@ class CardData {
     required this.theme,
     required this.font,
     this.portfolioUrl,
+    this.portfolioFile,
+    this.portfolioFileName,
   });
 
   CardData copyWith({
@@ -66,6 +70,8 @@ class CardData {
     String? theme,
     FontType? font,
     String? portfolioUrl,
+    String? portfolioFile,
+    String? portfolioFileName,
   }) {
     return CardData(
       profileImage: profileImage ?? this.profileImage,
@@ -84,6 +90,8 @@ class CardData {
       theme: theme ?? this.theme,
       font: font ?? this.font,
       portfolioUrl: portfolioUrl ?? this.portfolioUrl,
+      portfolioFile: portfolioFile ?? this.portfolioFile,
+      portfolioFileName: portfolioFileName ?? this.portfolioFileName,
     );
   }
 
@@ -105,6 +113,8 @@ class CardData {
       'theme': theme,
       'font': font.index,
       'portfolioUrl': portfolioUrl,
+      'portfolioFile': portfolioFile,
+      'portfolioFileName': portfolioFileName,
     };
   }
 
@@ -126,6 +136,8 @@ class CardData {
       theme: json['theme'] ?? '',
       font: FontType.values[json['font'] ?? 0],
       portfolioUrl: json['portfolioUrl'],
+      portfolioFile: json['portfolioFile'],
+      portfolioFileName: json['portfolioFileName'],
     );
   }
 }

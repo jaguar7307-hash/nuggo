@@ -9,14 +9,7 @@ import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 import '../constants/constants.dart';
 
-enum ViewType {
-  editor,
-  preview,
-  myCards,
-  wallet,
-  account,
-  settings,
-}
+enum ViewType { editor, preview, myCards, wallet, account, settings }
 
 class AppProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -74,9 +67,11 @@ class AppProvider with ChangeNotifier {
     }
     return null;
   }
+
   bool get isPaymentModalOpen => _isPaymentModalOpen;
   bool get canRestoreProfile => _lastDeletedProfile != null;
-  bool get scrollToBackgroundThemeOnNextBuild => _scrollToBackgroundThemeOnNextBuild;
+  bool get scrollToBackgroundThemeOnNextBuild =>
+      _scrollToBackgroundThemeOnNextBuild;
   bool get isPro => _currentUser?.membership == MembershipTier.pro;
   bool get isPhoneFrameMode => _isPhoneFrameMode;
 
@@ -92,7 +87,13 @@ class AppProvider with ChangeNotifier {
   /// 앱을 블로킹하지 않고 백그라운드에서 설정·프로필 로드 (첫 화면 즉시 표시)
   void initialize() {
     _cardsMap[_activeThemeUrl] = AppConstants.initialCardData;
-    _savedProfiles.add(Profile(id: 'default_0', name: 'My Card', data: AppConstants.initialCardData));
+    _savedProfiles.add(
+      Profile(
+        id: 'default_0',
+        name: 'My Card',
+        data: AppConstants.initialCardData,
+      ),
+    );
     _activeProfileId = 'default_0';
     unawaited(_loadFromStorage());
   }
@@ -106,11 +107,13 @@ class AppProvider with ChangeNotifier {
     _savedProfiles = results[1] as List<Profile>;
 
     if (_savedProfiles.isEmpty) {
-      _savedProfiles.add(Profile(
-        id: 'default_${DateTime.now().millisecondsSinceEpoch}',
-        name: 'My Card',
-        data: AppConstants.initialCardData,
-      ));
+      _savedProfiles.add(
+        Profile(
+          id: 'default_${DateTime.now().millisecondsSinceEpoch}',
+          name: 'My Card',
+          data: AppConstants.initialCardData,
+        ),
+      );
       unawaited(_storage.saveProfiles(_savedProfiles));
     }
     _cardsMap[_activeThemeUrl] = AppConstants.initialCardData;
@@ -203,11 +206,66 @@ class AppProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Settings Methods
-  Future<void> updateSettings(AppSettings newSettings) async {
-    _settings = newSettings;
-    await _storage.saveSettings(_settings);
+  Future<void> updateCurrentUserProfile({
+    required String name,
+    required String email,
+    String? phoneNumber,
+    String? avatarUrl,
+  }) async {
+    if (_currentUser == null) return;
+    final previousEmail = _currentUser!.email;
+    final normalizedPhone = (phoneNumber ?? '').trim();
+    final updated = _currentUser!.copyWith(
+      name: name.trim(),
+      email: email.trim(),
+      phoneNumber: normalizedPhone.isEmpty ? null : normalizedPhone,
+      avatarUrl: avatarUrl ?? _currentUser!.avatarUrl,
+    );
+    _currentUser = updated;
+
+    if (!updated.isGuest) {
+      if (updated.email == previousEmail) {
+        await _authService.updateUser(updated);
+      } else {
+        final users = await _storage.getUsers();
+        final idx = users.indexWhere((u) => u.email == previousEmail);
+        if (idx != -1) {
+          users[idx] = updated;
+          await _storage.saveUsers(users);
+        }
+        final session = await _storage.getSession();
+        final sessionEmail = session['email'];
+        final token =
+            session['token'] ?? updated.accessToken ?? _currentUser!.accessToken;
+        if (sessionEmail == previousEmail && token != null) {
+          await _storage.saveSession(updated.email, token);
+        }
+      }
+    }
     notifyListeners();
+  }
+
+  // Settings Methods
+  /// [notify] false: 메인 화면에 미표시 항목(사운드/햅틱 등) 업데이트 시 리빌드 생략
+  Future<void> updateSettings(AppSettings newSettings, {bool notify = true}) async {
+    _settings = newSettings;
+    unawaited(_storage.saveSettings(_settings));
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  Future<void> setNotificationsEnabled(bool enabled) async {
+    await updateSettings(_settings.copyWith(notifications: enabled));
+  }
+
+  Future<void> setAppLanguage(String language) async {
+    if (language != 'ko' && language != 'en') return;
+    await updateSettings(_settings.copyWith(language: language));
+  }
+
+  Future<void> clearTemporaryCache() async {
+    await _storage.clearTemporaryCache();
   }
 
   void _notifyNow() {
@@ -217,16 +275,20 @@ class AppProvider with ChangeNotifier {
 
   void _notifyCardDataDebounced() {
     _cardDataNotifyDebounce?.cancel();
-    _cardDataNotifyDebounce = Timer(const Duration(milliseconds: 60), () {
+    _cardDataNotifyDebounce = Timer(const Duration(milliseconds: 30), () {
       notifyListeners();
     });
   }
 
   // Card Data Methods
-  void updateCardData(CardData newData, {bool notify = true, bool immediate = false}) {
+  void updateCardData(
+    CardData newData, {
+    bool notify = true,
+    bool immediate = false,
+  }) {
     final theme = newData.theme;
     _cardsMap[theme] = newData;
-    
+
     if (theme != _activeThemeUrl) {
       _activeThemeUrl = theme;
     }
@@ -242,13 +304,15 @@ class AppProvider with ChangeNotifier {
   // Profile Methods
   Future<void> saveProfile(Profile profile) async {
     final exists = _savedProfiles.any((p) => p.id == profile.id);
-    
+
     if (exists) {
-      _savedProfiles = _savedProfiles.map((p) => p.id == profile.id ? profile : p).toList();
+      _savedProfiles = _savedProfiles
+          .map((p) => p.id == profile.id ? profile : p)
+          .toList();
     } else {
       _savedProfiles.add(profile);
     }
-    
+
     _activeProfileId = profile.id;
     await _storage.saveProfiles(_savedProfiles);
     notifyListeners();
@@ -269,11 +333,13 @@ class AppProvider with ChangeNotifier {
 
     // Ensure at least one profile
     if (_savedProfiles.isEmpty) {
-      _savedProfiles.add(Profile(
-        id: 'default_${DateTime.now().millisecondsSinceEpoch}',
-        name: 'My Card',
-        data: AppConstants.initialCardData,
-      ));
+      _savedProfiles.add(
+        Profile(
+          id: 'default_${DateTime.now().millisecondsSinceEpoch}',
+          name: 'My Card',
+          data: AppConstants.initialCardData,
+        ),
+      );
     }
 
     if (_activeProfileId == id) {
@@ -320,8 +386,12 @@ class AppProvider with ChangeNotifier {
     _previousView = _activeView;
     _activeView = view;
     if (view == ViewType.myCards) {
-      final valid = _selectedProfileId != null && _savedProfiles.any((p) => p.id == _selectedProfileId);
-      if (!valid && _savedProfiles.isNotEmpty) _selectedProfileId = _savedProfiles.first.id;
+      final valid =
+          _selectedProfileId != null &&
+          _savedProfiles.any((p) => p.id == _selectedProfileId);
+      if (!valid && _savedProfiles.isNotEmpty) {
+        _selectedProfileId = _savedProfiles.first.id;
+      }
     }
     notifyListeners();
   }
@@ -353,7 +423,7 @@ class AppProvider with ChangeNotifier {
     if (_currentUser != null) {
       final updatedUser = _currentUser!.copyWith(lockPin: pin);
       await updateUser(updatedUser);
-      
+
       final updatedSettings = _settings.copyWith(biometrics: true);
       await updateSettings(updatedSettings);
     }
@@ -375,7 +445,9 @@ class AppProvider with ChangeNotifier {
 
   Future<void> upgradeToPro() async {
     if (_currentUser != null) {
-      final updatedUser = _currentUser!.copyWith(membership: MembershipTier.pro);
+      final updatedUser = _currentUser!.copyWith(
+        membership: MembershipTier.pro,
+      );
       await updateUser(updatedUser);
     }
     notifyListeners();
@@ -383,22 +455,23 @@ class AppProvider with ChangeNotifier {
 
   // Send Count
   void incrementSendCount() {
-    if (_currentUser == null || _currentUser!.membership == MembershipTier.pro) {
+    if (_currentUser == null ||
+        _currentUser!.membership == MembershipTier.pro) {
       return;
     }
-    
+
     final today = DateTime.now().toIso8601String().split('T')[0];
     int count = _currentUser!.sendsToday;
-    
+
     if (_currentUser!.lastSendDate != today) {
       count = 0;
     }
-    
+
     final updatedUser = _currentUser!.copyWith(
       sendsToday: count + 1,
       lastSendDate: today,
     );
-    
+
     updateUser(updatedUser);
   }
 
