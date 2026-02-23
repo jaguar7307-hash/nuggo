@@ -14,6 +14,7 @@ import '../models/card_data.dart';
 import '../models/profile.dart';
 import '../constants/constants.dart';
 import '../constants/theme.dart';
+import '../widgets/business_card.dart';
 
 class EditorScreen extends StatefulWidget {
   const EditorScreen({super.key});
@@ -320,10 +321,7 @@ class _EditorScreenState extends State<EditorScreen> {
     CardData data,
     Map<String, String> t,
   ) {
-    // 명함 3% 축소 (242.55 * 0.97 ≈ 235.3)
-    const cardW = 235.3;
-    const cardH = 376.5; // cardW * 1.6
-    const previewSectionHeight = 432.0; // 하단 미리보기 버튼 히트영역 확장분 반영
+    const cardW = kBusinessCardAspectWidth;
     final previewLabelStyle = GoogleFonts.notoSansKr(
       fontSize: 11,
       fontWeight: FontWeight.w400,
@@ -334,92 +332,73 @@ class _EditorScreenState extends State<EditorScreen> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        SizedBox(
-          height: previewSectionHeight,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              const rightBlockWidth = 56.0 + 24.0; // 버튼열 + 우측패딩
-              final totalW = constraints.maxWidth;
-              final cardAreaW = totalW - rightBlockWidth;
-              final sideMargin = (cardAreaW - cardW) / 2;
-              final safeMargin = sideMargin.isNegative ? 0.0 : sideMargin;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(width: safeMargin),
-                  SizedBox(
-                    width: cardW,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(t['livePreview']!, style: previewLabelStyle),
-                        const SizedBox(height: 6),
-                        SizedBox(
-                          height: cardH * 0.92 + 28 + 24,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            alignment: Alignment.topCenter,
-                            children: [
-                              Positioned(
-                                top: 0,
-                                child: Transform.scale(
-                                  scale: 0.92,
-                                  child: SizedBox(
-                                    width: cardW,
-                                    height: cardH,
-                                    child: DigitalCard(
-                                      data: data,
-                                      isLarge: false,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: MouseRegion(
-                                    cursor: SystemMouseCursors.click,
-                                    child: GestureDetector(
-                                      onTap: () => provider.setActiveView(
-                                        ViewType.preview,
-                                      ),
-                                      behavior: HitTestBehavior.opaque,
-                                      child: SizedBox(
-                                        width: 84,
-                                        height: 84,
-                                        child: Center(
-                                          child: Container(
-                                            width: 48,
-                                            height: 48,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: Colors.grey.shade400,
-                                              ),
-                                            ),
-                                            child: Icon(
-                                              Icons.visibility_outlined,
-                                              size: 24,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const rightBlockWidth = 56.0 + 24.0;
+            final totalW = constraints.maxWidth;
+            final cardAreaW = totalW - rightBlockWidth;
+            final sideMargin = (cardAreaW - cardW) / 2;
+            final safeMargin = sideMargin.isNegative ? 0.0 : sideMargin;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(width: safeMargin),
+                SizedBox(
+                  width: cardW,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(t['livePreview']!, style: previewLabelStyle),
+                      const SizedBox(height: 6),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: cardW,
+                            child: DigitalCard(
+                              data: data,
+                              isLarge: false,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(height: 12),
+                          MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () => provider.setActiveView(
+                                ViewType.preview,
+                              ),
+                              behavior: HitTestBehavior.opaque,
+                              child: SizedBox(
+                                width: 84,
+                                height: 48,
+                                child: Center(
+                                  child: Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.grey.shade400,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.visibility_outlined,
+                                      size: 24,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  SizedBox(width: safeMargin),
-                  Padding(
+                ),
+                SizedBox(width: safeMargin),
+                Padding(
                     padding: const EdgeInsets.only(right: 24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -463,7 +442,6 @@ class _EditorScreenState extends State<EditorScreen> {
               );
             },
           ),
-        ),
       ],
     );
   }

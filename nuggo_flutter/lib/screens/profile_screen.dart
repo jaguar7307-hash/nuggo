@@ -170,10 +170,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final data = selected.data;
     return LayoutBuilder(
       builder: (context, constraints) {
-        // 모바일(좁은 폭)은 기존 비율을 고정하고, 넓은 PC 폭에서만 카드를 축소
         final isWideDesktop = constraints.maxWidth >= 560;
         final cardWidth = constraints.maxWidth * (isWideDesktop ? 0.42 : 0.52);
-        final cardHeight = cardWidth * (_cardAspectHeight / _cardAspectWidth);
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -182,59 +180,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 SizedBox(
                   width: cardWidth,
-                  child: SizedBox(
-                    height: cardHeight + 20,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.topCenter,
-                      children: [
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          child: _buildCompactCard(context, provider, data),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                customBorder: const CircleBorder(),
-                                onTap: () {
-                                  provider.loadProfile(selected);
-                                  provider.setActiveView(ViewType.preview);
-                                },
-                                child: SizedBox(
-                                  width: 80,
-                                  height: 80,
-                                  child: Align(
-                                    alignment: Alignment.bottomCenter,
-                                    child: Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.grey.shade400,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.visibility_outlined,
-                                        color: Colors.grey.shade600,
-                                        size: 18,
-                                      ),
-                                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildCompactCard(context, provider, data),
+                      const SizedBox(height: 8),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () {
+                            provider.loadProfile(selected);
+                            provider.setActiveView(ViewType.preview);
+                          },
+                          child: SizedBox(
+                            width: 80,
+                            height: 40,
+                            child: Center(
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.grey.shade400,
                                   ),
+                                ),
+                                child: Icon(
+                                  Icons.visibility_outlined,
+                                  color: Colors.grey.shade600,
+                                  size: 18,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 24),
@@ -291,41 +273,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// 에디터와 동일 비율 (242.55 : 388.08 = 1 : 1.6)
-  static const double _cardAspectWidth = 242.55;
-  static const double _cardAspectHeight = 388.08;
-
-  /// 에디터 명함(DigitalCard) 레이아웃·내용을 스케일만 맞춰 그대로 표시 (배경/주소/아이콘 동일).
+  /// BusinessCard(DigitalCard)는 내부 AspectRatio를 가지므로 width만 지정.
   Widget _buildCompactCard(
     BuildContext context,
     AppProvider provider,
     CardData data,
   ) {
-    return AspectRatio(
-      aspectRatio: _cardAspectWidth / _cardAspectHeight,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 50,
-              offset: const Offset(0, 25),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: FittedBox(
-            fit: BoxFit.contain,
-            alignment: Alignment.topCenter,
-            child: SizedBox(
-              width: _cardAspectWidth,
-              height: _cardAspectHeight,
-              child: DigitalCard(data: data, isLarge: false),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 50,
+            offset: const Offset(0, 25),
           ),
-        ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: DigitalCard(data: data, isLarge: false),
       ),
     );
   }
@@ -508,13 +475,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
-                      height: 96,
+                      height: 92,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: List.generate(7, (i) {
                           final isHighlight = i == 2;
                           final barHeight =
-                              96 * 0.25 + (96 * 0.6 * weekHeights[i]);
+                              88 * 0.25 + (88 * 0.6 * weekHeights[i]);
                           return Expanded(
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
@@ -522,6 +489,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.end,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Container(
                                     height: barHeight,
@@ -532,7 +500,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 4),
                                   Text(
                                     weekLabels[i],
                                     style: GoogleFonts.manrope(

@@ -2,6 +2,14 @@
 
 React 프로젝트를 Flutter로 완전히 변환한 디지털 명함 제작 및 관리 애플리케이션입니다.
 
+## 📝 커밋 이력 보기
+
+Git에서 저장한 커밋 메시지(작업 저장 등)를 확인하려면:
+
+👉 **[GitHub 커밋 이력 바로가기](https://github.com/jaguar7307-hash/nuggo/commits/main)**
+
+위 링크에서 `git commit -m "..."` 에 적은 문구를 확인할 수 있습니다.
+
 ## 주요 기능
 
 ### ✨ 명함 생성 및 편집
