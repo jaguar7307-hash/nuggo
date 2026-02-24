@@ -79,8 +79,8 @@ class SettingsScreen extends StatelessWidget {
                         ? _tr(lang, '게스트 사용자', 'Guest User')
                         : user!.name;
                     final planName = provider.isPro
-                        ? _tr(lang, '프리미엄 플랜 사용 중', 'Premium plan active')
-                        : _tr(lang, '무료 플랜 사용 중', 'Free plan active');
+                        ? _tr(lang, '프리미엄 플랜 사용 중', 'Premium plan')
+                        : _tr(lang, '무료플랜 사용 중', 'Free plan');
                     final isGuest = user?.isGuest ?? true;
 
                     return Stack(
@@ -426,8 +426,8 @@ class SettingsScreen extends StatelessWidget {
     if (user == null) return;
     final currentData = provider.currentCardData;
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _ProfileEditScreen(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => _ProfileEditScreen(
           initialUser: user,
           initialCardData: currentData,
           onSave: (newData) async {
@@ -449,6 +449,16 @@ class SettingsScreen extends StatelessWidget {
             );
           },
         ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
       ),
     );
   }
@@ -1584,8 +1594,8 @@ class _SubscriptionSecurityScreen extends StatelessWidget {
         final user = provider.currentUser;
         final lang = provider.settings.language;
         final planText = provider.isPro
-            ? _tr(lang, '프리미엄 플랜 사용 중', 'Premium plan active')
-            : _tr(lang, '무료 플랜 사용 중', 'Free plan active');
+            ? _tr(lang, '프리미엄 플랜 사용 중', 'Premium plan')
+            : _tr(lang, '무료플랜 사용 중', 'Free plan');
         final providerText = user == null ? '-' : user.provider.name.toUpperCase();
 
         return Scaffold(
@@ -1854,6 +1864,8 @@ class _SecurityInfoTile extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: SettingsScreen._korean(
                 size: 13,
                 weight: FontWeight.w600,
