@@ -41,6 +41,7 @@ class _EditorScreenState extends State<EditorScreen> {
   bool _aiSloganLoading = false;
   bool _sloganKoreanMode = true;
   bool _formReady = false;
+  bool _basicProfileToastShown = false;
   final TextEditingController _sloganController = TextEditingController();
   final Map<String, TextEditingController> _formControllers = {};
   String? _cachedLanguage;
@@ -254,7 +255,10 @@ class _EditorScreenState extends State<EditorScreen> {
           });
         }
 
-        return Container(
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Container(
           color: const Color(0xFF0B0B0B),
           width: double.infinity,
           child: Stack(
@@ -264,6 +268,8 @@ class _EditorScreenState extends State<EditorScreen> {
                   final width = constraints.maxWidth;
                   return SingleChildScrollView(
                     controller: _editorScrollController,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
                     ),
@@ -310,6 +316,7 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
             ],
           ),
+        ),
         );
       },
     );
@@ -628,6 +635,14 @@ class _EditorScreenState extends State<EditorScreen> {
 
   static const Color _profileActionRed = Color(0xFFE57373);
 
+  static const List<String> _jobTitleSuggestions = [
+    '대표이사', '대표', 'CEO', 'COO', 'CTO', 'CFO', 'CMO',
+    '부사장', '전무이사', '전무', '상무이사', '상무',
+    '이사', '본부장', '실장', '팀장',
+    '부장', '차장', '과장', '대리', '주임', '사원', '인턴',
+    '프리랜서', '1인 기업',
+  ];
+
   Widget _buildProfilesSection(
     BuildContext context,
     AppProvider provider,
@@ -841,17 +856,12 @@ class _EditorScreenState extends State<EditorScreen> {
                   value: data.fullName,
                   onChanged: (value) =>
                       provider.updateCardData(data.copyWith(fullName: value)),
+                  onTap: () => _maybeShowBasicProfileToast(context, provider, t),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildTextField(
-                  fieldKey: 'jobTitle',
-                  label: t['jobTitle']!,
-                  value: data.jobTitle,
-                  onChanged: (value) =>
-                      provider.updateCardData(data.copyWith(jobTitle: value)),
-                ),
+                child: _buildJobTitleField(context, provider, data, t),
               ),
             ],
           ),
@@ -862,6 +872,7 @@ class _EditorScreenState extends State<EditorScreen> {
             value: data.companyName,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(companyName: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
 
           const SizedBox(height: 24),
@@ -881,8 +892,10 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.phone,
             value: data.phone,
             placeholder: t['placeholders.phone']!,
+            keyboardType: TextInputType.phone,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(phone: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -890,8 +903,10 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.sms,
             value: data.sms,
             placeholder: t['placeholders.sms']!,
+            keyboardType: TextInputType.phone,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(sms: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -899,17 +914,10 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.email,
             value: data.email,
             placeholder: t['placeholders.email']!,
+            keyboardType: TextInputType.emailAddress,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(email: value)),
-          ),
-          const SizedBox(height: 12),
-          _buildPillInput(
-            fieldKey: 'kakao',
-            icon: Icons.chat_bubble_outline,
-            value: data.kakao,
-            placeholder: t['placeholders.kakao']!,
-            onChanged: (value) =>
-                provider.updateCardData(data.copyWith(kakao: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
 
           const SizedBox(height: 24),
@@ -922,19 +930,20 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.language,
             value: data.website,
             placeholder: t['placeholders.website']!,
+            keyboardType: TextInputType.url,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(website: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 12),
-          _buildPortfolioInput(context, provider, data, t['placeholders.portfolio']!),
-          const SizedBox(height: 12),
           _buildPillInput(
-            fieldKey: 'linkedin',
-            icon: Icons.public,
-            value: data.linkedin,
-            placeholder: t['placeholders.linkedin']!,
+            fieldKey: 'kakao',
+            icon: Icons.chat_bubble_outline,
+            value: data.kakao,
+            placeholder: t['placeholders.kakao']!,
             onChanged: (value) =>
-                provider.updateCardData(data.copyWith(linkedin: value)),
+                provider.updateCardData(data.copyWith(kakao: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -942,8 +951,18 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.share,
             value: data.shareLink,
             placeholder: t['placeholders.shareLink']!,
+            keyboardType: TextInputType.url,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(shareLink: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
+          ),
+          const SizedBox(height: 12),
+          _buildPortfolioInput(
+            context,
+            provider,
+            data,
+            t['placeholders.portfolio']!,
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
 
           const SizedBox(height: 24),
@@ -958,6 +977,7 @@ class _EditorScreenState extends State<EditorScreen> {
             placeholder: t['placeholders.address']!,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(address: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 150),
         ],
@@ -1082,6 +1102,7 @@ class _EditorScreenState extends State<EditorScreen> {
               child: TextField(
                 controller: _sloganController,
                 inputFormatters: [_koreanOnlySloganFormatter],
+                onTap: () => _maybeShowBasicProfileToast(context, provider, t),
                 onChanged: (value) => provider.updateCardData(
                   provider.currentCardData.copyWith(slogan: value),
                 ),
@@ -1257,11 +1278,139 @@ class _EditorScreenState extends State<EditorScreen> {
     )];
   }
 
+  Widget _buildJobTitleField(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+    Map<String, String> t,
+  ) {
+    final controller = _getFormController('jobTitle', data.jobTitle);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(t['jobTitle']!.toUpperCase(), style: _inputLabelStyle),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          onChanged: (value) =>
+              provider.updateCardData(data.copyWith(jobTitle: value)),
+          onTap: () => _maybeShowBasicProfileToast(context, provider, t),
+          textInputAction: TextInputAction.next,
+          enableInteractiveSelection: true,
+          decoration: InputDecoration(
+            border: const UnderlineInputBorder(),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.grey.shade600),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: AppTheme.primary, width: 1.5),
+            ),
+            isDense: true,
+            filled: false,
+            suffixIcon: GestureDetector(
+              onTap: () => _showJobTitlePicker(context, controller, provider, data, t),
+              child: Icon(Icons.expand_more_rounded, size: 20, color: Colors.grey.shade400),
+            ),
+          ),
+          style: _inputTextStyle,
+        ),
+      ],
+    );
+  }
+
+  void _showJobTitlePicker(
+    BuildContext context,
+    TextEditingController controller,
+    AppProvider provider,
+    CardData data,
+    Map<String, String> t,
+  ) {
+    FocusScope.of(context).unfocus();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                t['jobTitlePickerTitle'] ?? '직함 / 직책 선택',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Divider(color: Colors.grey.shade200, height: 1),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.5,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _jobTitleSuggestions.length,
+                  separatorBuilder: (_, __) =>
+                      Divider(color: Colors.grey.shade100, height: 1),
+                  itemBuilder: (_, index) {
+                    final title = _jobTitleSuggestions[index];
+                    final isSelected = controller.text == title;
+                    return ListTile(
+                      title: Text(
+                        title,
+                        style: GoogleFonts.notoSansKr(
+                          fontSize: 15,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: isSelected
+                              ? AppTheme.primary
+                              : Colors.black87,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? Icon(Icons.check, color: AppTheme.primary, size: 18)
+                          : null,
+                      onTap: () {
+                        controller.text = title;
+                        provider.updateCardData(
+                          data.copyWith(jobTitle: title),
+                        );
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildTextField({
     required String fieldKey,
     required String label,
     required String value,
     required Function(String) onChanged,
+    VoidCallback? onTap,
   }) {
     final controller = _getFormController(fieldKey, value);
     return Column(
@@ -1272,6 +1421,9 @@ class _EditorScreenState extends State<EditorScreen> {
         TextField(
           controller: controller,
           onChanged: (value) => onChanged(value),
+          onTap: onTap,
+          textInputAction: TextInputAction.next,
+          enableInteractiveSelection: true,
           decoration: InputDecoration(
             border: const UnderlineInputBorder(),
             enabledBorder: UnderlineInputBorder(
@@ -1465,6 +1617,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     ..selection = TextSelection.collapsed(
                       offset: displayUrl.length,
                     ),
+                  onTap: () => _maybeShowBasicProfileToast(context, provider, t),
                   onChanged: (value) => provider.updateCardData(
                     data.copyWith(profileImage: value),
                   ),
@@ -1537,8 +1690,9 @@ class _EditorScreenState extends State<EditorScreen> {
     BuildContext context,
     AppProvider provider,
     CardData data,
-    String placeholder,
-  ) {
+    String placeholder, {
+    VoidCallback? onTap,
+  }) {
     final urlController = _getFormController('portfolioUrl', data.portfolioUrl ?? '');
     final hasFile = (data.portfolioFile ?? '').isNotEmpty;
     return Column(
@@ -1574,6 +1728,7 @@ class _EditorScreenState extends State<EditorScreen> {
             Expanded(
               child: TextField(
                 controller: urlController,
+                onTap: onTap,
                 onChanged: (v) => provider.updateCardData(data.copyWith(portfolioUrl: v)),
                 decoration: InputDecoration(
                   hintText: placeholder,
@@ -1632,6 +1787,8 @@ class _EditorScreenState extends State<EditorScreen> {
     required String value,
     required String placeholder,
     required Function(String) onChanged,
+    TextInputType keyboardType = TextInputType.text,
+    VoidCallback? onTap,
   }) {
     final controller = _getFormController(fieldKey, value);
     return Container(
@@ -1649,6 +1806,10 @@ class _EditorScreenState extends State<EditorScreen> {
             child: TextField(
               controller: controller,
               onChanged: (value) => onChanged(value),
+              onTap: onTap,
+              textInputAction: TextInputAction.next,
+              keyboardType: keyboardType,
+              enableInteractiveSelection: true,
               decoration: InputDecoration(
                 hintText: placeholder,
                 hintStyle: _inputHintStyle,
@@ -1829,6 +1990,10 @@ class _EditorScreenState extends State<EditorScreen> {
         'placeholders.portfolio': '링크 입력 (예: www.example.com)',
         'placeholders.address': '주소 입력',
         'placeholders.hotlink': '또는 이미지 URL 붙여넣기...',
+        'basicProfileToastLine1': '입력 내용이 기본 프로필로 저장됩니다.',
+        'basicProfileToastLine2': '프로필 사진은 설정 > 개인 프로필에서 설정할 수 있습니다.',
+        'basicProfileToastAction': '설정',
+        'jobTitlePickerTitle': '직함 / 직책 선택',
       };
       return _cachedTexts;
     } else {
@@ -1874,8 +2039,47 @@ class _EditorScreenState extends State<EditorScreen> {
         'placeholders.portfolio': 'Enter link (e.g. www.example.com)',
         'placeholders.address': 'Physical Address',
         'placeholders.hotlink': 'Or paste image URL (Hotlink)...',
+        'basicProfileToastLine1': 'Your input will be saved as the basic profile.',
+        'basicProfileToastLine2': 'Profile photo can be set in Settings > Personal Profile.',
+        'basicProfileToastAction': 'Settings',
+        'jobTitlePickerTitle': 'Select Job Title',
       };
       return _cachedTexts;
     }
+  }
+
+  void _maybeShowBasicProfileToast(
+    BuildContext context,
+    AppProvider provider,
+    Map<String, String> t,
+  ) {
+    if (provider.hasBasicProfile || _basicProfileToastShown) return;
+    _basicProfileToastShown = true;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(t['basicProfileToastLine1']!),
+            const SizedBox(height: 4),
+            Text(
+              t['basicProfileToastLine2']!,
+              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.9)),
+            ),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: t['basicProfileToastAction']!,
+          onPressed: () {
+            provider.setActiveView(ViewType.settings);
+          },
+        ),
+      ),
+    );
   }
 }

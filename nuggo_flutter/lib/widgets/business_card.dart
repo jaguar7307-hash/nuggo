@@ -124,6 +124,7 @@ class BusinessCard extends StatelessWidget {
     required Color textColor,
     required bool hasProfileImage,
   }) {
+    final hasSlogan = data.slogan.trim().isNotEmpty;
     return Align(
       alignment: Alignment.topCenter,
       child: Padding(
@@ -171,6 +172,23 @@ class BusinessCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+            if (hasProfileImage && hasSlogan) ...[
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  '"${data.slogan}"',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: textColor,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ],
         ),
       ),

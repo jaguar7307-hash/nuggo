@@ -1,10 +1,13 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../constants/constants.dart';
 import '../constants/theme.dart';
+import '../models/app_settings.dart';
 import '../models/card_data.dart';
 import '../models/user.dart';
 import '../providers/app_provider.dart';
@@ -66,12 +69,11 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: _bg,
-      child: SafeArea(
-        child: Navigator(
-          onGenerateRoute: (settings) {
-            return MaterialPageRoute<void>(
-              builder: (navContext) {
-                return Consumer<AppProvider>(
+      child: Navigator(
+        onGenerateRoute: (settings) {
+          return MaterialPageRoute<void>(
+            builder: (navContext) {
+              return Consumer<AppProvider>(
                   builder: (context, provider, _) {
                     final user = provider.currentUser;
                     final settings = provider.settings;
@@ -80,8 +82,8 @@ class SettingsScreen extends StatelessWidget {
                         ? _tr(lang, '게스트 사용자', 'Guest User')
                         : user!.name;
                     final planName = provider.isPro
-                        ? _tr(lang, '프리미엄 플랜 사용 중', 'Premium plan active')
-                        : _tr(lang, '무료 플랜 사용 중', 'Free plan active');
+                        ? _tr(lang, '프리미엄 플랜 사용 중', 'Premium plan')
+                        : _tr(lang, '무료플랜 사용 중', 'Free plan');
                     final isGuest = user?.isGuest ?? true;
 
                     return Stack(
@@ -133,14 +135,14 @@ class SettingsScreen extends StatelessWidget {
                                 ),
                                 _MenuTile(
                                   icon: Icons.verified_user_outlined,
-                                  title: _tr(lang, '구독 및 보안', 'Subscription & Security'),
-                                  subtitle: _tr(lang, '플랜 관리 및 비밀번호 변경', 'Manage plan and password'),
+                                  title: _tr(lang, '구독 및 보안', 'Plan & Security'),
+                                  subtitle: _tr(lang, '플랜·비밀번호', 'Plan, password'),
                                   onTap: () => _openSubscriptionSecurity(navContext, provider),
                                 ),
                                 _MenuTile(
                                   icon: Icons.tune_rounded,
                                   title: _tr(lang, '환경설정', 'Preferences'),
-                                  subtitle: _tr(lang, '기본 사용 환경', 'Default app preferences'),
+                                  subtitle: _tr(lang, '기본 사용 환경', 'Preferences'),
                                   onTap: () => _openPreferences(navContext, provider),
                                 ),
                               ],
@@ -153,7 +155,7 @@ class SettingsScreen extends StatelessWidget {
                                 _SwitchTile(
                                   icon: Icons.notifications_none_rounded,
                                   title: _tr(lang, '알림설정', 'Notifications'),
-                                  subtitle: _tr(lang, '푸시 알림 및 소리', 'Push notifications and sound'),
+                                  subtitle: _tr(lang, '푸시 알림 및 소리', 'Push & sound'),
                                   value: settings.notifications,
                                   activeColor: _accent,
                                   switchScale: 0.86,
@@ -164,21 +166,19 @@ class SettingsScreen extends StatelessWidget {
                                 _MenuTile(
                                   icon: Icons.apps_rounded,
                                   title: _tr(lang, '앱 설정', 'App Settings'),
-                                  subtitle: _tr(lang, '앱 전반 동작 설정', 'General app behavior'),
-                                  onTap: () => _showPlaceholder(
-                                    navContext,
-                                    _tr(lang, '앱 설정 세부 화면을 준비 중입니다.', 'Detailed app settings are coming soon.'),
-                                  ),
+                                  subtitle: _tr(lang, '앱 전반 동작 설정', 'App behavior'),
+                                  onTap: () => _openAppSettings(navContext, provider),
                                 ),
                                 _SwitchTile(
                                   icon: Icons.language_rounded,
-                                  title: _tr(lang, '다국어 선택 (한국어/영어)', 'Language (Korean/English)'),
+                                  title: _tr(lang, '언어 (한국어/영어)', 'Language'),
                                   subtitle: settings.language == 'ko'
-                                      ? _tr(lang, '현재: 한국어', 'Current: Korean')
-                                      : 'Current: English',
+                                      ? _tr(lang, '한국어', 'Korean')
+                                      : 'English',
                                   value: settings.language == 'en',
                                   activeColor: _accent,
                                   switchScale: 0.92,
+                                  titleSize: 14,
                                   onChanged: (v) async {
                                     await _setAppLanguage(navContext, provider, v);
                                   },
@@ -193,40 +193,26 @@ class SettingsScreen extends StatelessWidget {
                                 _MenuTile(
                                   icon: Icons.nfc_rounded,
                                   title: _tr(lang, 'NFC 카드 만들기 가이드', 'NFC Card Guide'),
-                                  subtitle: _tr(lang, '스마트하게 탭하는 방법', 'How to use NFC tap'),
-                                  onTap: () => _showPlaceholder(
-                                    navContext,
-                                    _tr(lang, '가이드 본문은 추후 입력해 주세요.', 'Guide content will be added soon.'),
-                                  ),
+                                  subtitle: _tr(lang, '스마트하게 탭하는 방법', 'NFC tap guide'),
+                                  onTap: () => _openNFCGuide(navContext, provider),
                                 ),
                                 _MenuTile(
                                   icon: Icons.privacy_tip_outlined,
                                   title: _tr(lang, '개인정보 처리방침', 'Privacy Policy'),
                                   subtitle: '',
-                                  onTap: () => _showPlaceholder(
-                                    navContext,
-                                    _tr(lang, '개인정보 처리방침 내용은 추후 입력해 주세요.', 'Privacy policy content will be added soon.'),
-                                  ),
-                                  isExternal: true,
+                                  onTap: () => _openPrivacyPolicy(navContext, lang),
                                 ),
                                 _MenuTile(
                                   icon: Icons.description_outlined,
                                   title: _tr(lang, '이용약관', 'Terms of Service'),
                                   subtitle: '',
-                                  onTap: () => _showPlaceholder(
-                                    navContext,
-                                    _tr(lang, '이용약관 내용은 추후 입력해 주세요.', 'Terms content will be added soon.'),
-                                  ),
-                                  isExternal: true,
+                                  onTap: () => _openTermsOfService(navContext, lang),
                                 ),
                                 _MenuTile(
                                   icon: Icons.support_agent_rounded,
                                   title: _tr(lang, '고객센터 및 도움말', 'Help & Support'),
                                   subtitle: '',
-                                  onTap: () => _showPlaceholder(
-                                    navContext,
-                                    _tr(lang, '고객센터/도움말 내용은 추후 입력해 주세요.', 'Support content will be added soon.'),
-                                  ),
+                                  onTap: () => _openHelpSupport(navContext, lang),
                                 ),
                               ],
                             ),
@@ -238,7 +224,7 @@ class SettingsScreen extends StatelessWidget {
                                 _MenuTile(
                                   icon: Icons.backup_rounded,
                                   title: _tr(lang, '데이터 백업', 'Data Backup'),
-                                  subtitle: _tr(lang, '데이터를 안전하게 보관', 'Keep data safely'),
+                                  subtitle: _tr(lang, '데이터를 안전하게 보관', 'Backup data'),
                                   onTap: () => _showPlaceholder(
                                     navContext,
                                     _tr(lang, '데이터 백업 기능은 준비 중입니다.', 'Data backup is coming soon.'),
@@ -247,7 +233,7 @@ class SettingsScreen extends StatelessWidget {
                                 _MenuTile(
                                   icon: Icons.cleaning_services_rounded,
                                   title: _tr(lang, '캐시삭제', 'Clear Cache'),
-                                  subtitle: _tr(lang, '임시 데이터를 정리', 'Clean temporary data'),
+                                  subtitle: _tr(lang, '임시 데이터를 정리', 'Clear temp'),
                                   onTap: () => _clearImageCache(navContext, provider),
                                 ),
                               ],
@@ -280,22 +266,19 @@ class SettingsScreen extends StatelessWidget {
                         Positioned(
                           left: 24,
                           right: 24,
-                          bottom: 16,
+                          bottom: 0,
                           child: _BottomAuthCta(
                             isGuest: isGuest,
                             language: lang,
-                            onPrimaryTap: () => _handleBrowseExit(navContext, provider, isGuest),
-                            onLogoutTap: () async {
+                            onPrimaryTap: () async {
                               if (isGuest) {
                                 _showPlaceholder(
                                   navContext,
-                                  _tr(lang, '게스트 모드에서는 로그아웃할 계정이 없습니다.', 'No account to log out in guest mode.'),
+                                  _tr(lang, '로그인/회원가입 화면은 곧 연결됩니다.', 'Sign in / sign up is coming soon.'),
                                 );
                                 return;
                               }
-                              await provider.logout();
-                              if (!navContext.mounted) return;
-                              _showPlaceholder(navContext, _tr(lang, '로그아웃되었습니다.', 'Logged out.'));
+                              await _handleLogout(navContext, provider, lang);
                             },
                           ),
                         ),
@@ -307,26 +290,20 @@ class SettingsScreen extends StatelessWidget {
             );
           },
         ),
-      ),
     );
   }
 
-  static Future<void> _handleBrowseExit(
+  static Future<void> _handleLogout(
     BuildContext context,
     AppProvider provider,
-    bool isGuest,
+    String lang,
   ) async {
-    final lang = provider.settings.language;
-    if (isGuest) {
-      _showPlaceholder(context, _tr(lang, '로그인/회원가입 화면은 곧 연결됩니다.', 'Sign in / sign up is coming soon.'));
-      return;
-    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
           title: Text(_tr(lang, '로그아웃', 'Log Out')),
-          content: Text(_tr(lang, '둘러보기를 종료하고 로그아웃하시겠어요?', 'Exit browsing and log out?')),
+          content: Text(_tr(lang, '로그아웃하시겠어요?', 'Log out?')),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
@@ -343,7 +320,65 @@ class SettingsScreen extends StatelessWidget {
     if (confirm != true) return;
     await provider.logout();
     if (!context.mounted) return;
-    _showToast(context, _tr(lang, '게스트 모드로 전환되었습니다.', 'Switched to guest mode.'));
+    _showToast(context, _tr(lang, '로그아웃되었습니다.', 'Logged out.'));
+  }
+
+  static Future<void> _openContentPage(
+    BuildContext context,
+    String lang,
+    String titleKo,
+    String titleEn,
+    String content,
+  ) async {
+    await Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (_, __, ___) => _LegalContentScreen(
+          title: _tr(lang, titleKo, titleEn),
+          content: content,
+        ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
+      ),
+    );
+  }
+
+  static Future<void> _openPrivacyPolicy(BuildContext context, String lang) async {
+    await _openContentPage(
+      context,
+      lang,
+      '개인정보 처리방침',
+      'Privacy Policy',
+      AppConstants.privacyPolicy,
+    );
+  }
+
+  static Future<void> _openTermsOfService(BuildContext context, String lang) async {
+    await _openContentPage(
+      context,
+      lang,
+      '이용약관',
+      'Terms of Service',
+      AppConstants.termsOfService,
+    );
+  }
+
+  static Future<void> _openHelpSupport(BuildContext context, String lang) async {
+    await _openContentPage(
+      context,
+      lang,
+      '고객센터 및 도움말',
+      'Help & Support',
+      AppConstants.helpAndSupport,
+    );
   }
 
   static void _showPlaceholder(BuildContext context, String message) {
@@ -435,12 +470,14 @@ class SettingsScreen extends StatelessWidget {
     if (user == null) return;
     final currentData = provider.currentCardData;
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _ProfileEditScreen(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => _ProfileEditScreen(
           initialUser: user,
           initialCardData: currentData,
           onSave: (newData) async {
             provider.updateCardData(newData, immediate: true);
+            await provider.syncProfilesWithCardData(newData);
+            await provider.markBasicProfileExists();
             final safeName = newData.fullName.trim().isEmpty
                 ? user.name
                 : newData.fullName.trim();
@@ -458,6 +495,16 @@ class SettingsScreen extends StatelessWidget {
             );
           },
         ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
       ),
     );
   }
@@ -467,8 +514,66 @@ class SettingsScreen extends StatelessWidget {
     AppProvider provider,
   ) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const _SubscriptionSecurityScreen(),
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (_, __, ___) => const _SubscriptionSecurityScreen(),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
+      ),
+    );
+  }
+
+  static Future<void> _openAppSettings(
+    BuildContext context,
+    AppProvider provider,
+  ) async {
+    await Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (_, __, ___) => const _AppSettingsScreen(),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
+      ),
+    );
+  }
+
+  static Future<void> _openNFCGuide(
+    BuildContext context,
+    AppProvider provider,
+  ) async {
+    final shareLink = provider.currentCardData.shareLink.trim();
+    final exampleUrl = shareLink.isEmpty
+        ? 'https://nuggo.me/username'
+        : (shareLink.startsWith('http') ? shareLink : 'https://$shareLink');
+    await Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => _NFCGuideScreen(exampleUrl: exampleUrl),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
       ),
     );
   }
@@ -575,6 +680,346 @@ class SettingsScreen extends StatelessWidget {
       selected == 'ko'
           ? '언어가 한국어로 변경되었습니다.'
           : 'Language changed to English.',
+    );
+  }
+}
+
+class _LegalContentScreen extends StatelessWidget {
+  final String title;
+  final String content;
+
+  const _LegalContentScreen({
+    required this.title,
+    required this.content,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FC),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF8F9FC),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          color: const Color(0xFF111827),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          title,
+          style: SettingsScreen._korean(
+            size: 20,
+            weight: FontWeight.w700,
+            color: const Color(0xFF111827),
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          child: SelectableText(
+            content,
+            style: SettingsScreen._korean(
+              size: 13,
+              height: 1.6,
+              color: const Color(0xFF334155),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AppSettingsScreen extends StatelessWidget {
+  const _AppSettingsScreen();
+
+  String _tr(String lang, String ko, String en) => lang == 'en' ? en : ko;
+
+  String _profilePrivacyLabel(String lang, ProfilePrivacy p) {
+    switch (p) {
+      case ProfilePrivacy.public:
+        return _tr(lang, '전체 공개', 'Public');
+      case ProfilePrivacy.linkOnly:
+        return _tr(lang, '링크 공유만', 'Link only');
+      case ProfilePrivacy.private:
+        return _tr(lang, '비공개', 'Private');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AppProvider>(
+      builder: (context, provider, _) {
+        final lang = provider.settings.language;
+        final settings = provider.settings;
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8F9FC),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFFF8F9FC),
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              color: const Color(0xFF111827),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: Column(
+              children: [
+                Text(
+                  _tr(lang, '앱 설정', 'App Settings'),
+                  style: SettingsScreen._korean(
+                    size: 20,
+                    weight: FontWeight.w700,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+                Text(
+                  'App Settings',
+                  style: SettingsScreen._inter(
+                    size: 9,
+                    weight: FontWeight.w700,
+                    color: const Color(0xFF94A3B8),
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ],
+            ),
+            centerTitle: true,
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                children: [
+                  _SecuritySectionCard(
+                    icon: Icons.tune_rounded,
+                    iconColor: const Color(0xFF4B61D1),
+                    title: _tr(lang, '일반', 'General'),
+                    child: Column(
+                      children: [
+                        _buildSwitchTile(
+                          context: context,
+                          provider: provider,
+                          lang: lang,
+                          title: _tr(lang, '사운드', 'Sound'),
+                          subtitle: _tr(lang, '효과음 사용', 'Use sound effects'),
+                          value: settings.sound,
+                          onChanged: (v) => provider.updateSettings(
+                            settings.copyWith(sound: v),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildSwitchTile(
+                          context: context,
+                          provider: provider,
+                          lang: lang,
+                          title: _tr(lang, '햅틱', 'Haptic'),
+                          subtitle: _tr(lang, '진동 피드백 사용', 'Use vibration feedback'),
+                          value: settings.haptic,
+                          onChanged: (v) => provider.updateSettings(
+                            settings.copyWith(haptic: v),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildSwitchTile(
+                          context: context,
+                          provider: provider,
+                          lang: lang,
+                          title: _tr(lang, '다크 모드', 'Dark Mode'),
+                          subtitle: _tr(lang, '앱 테마를 어둡게', 'Use dark theme'),
+                          value: settings.darkMode,
+                          onChanged: (v) => provider.updateSettings(
+                            settings.copyWith(darkMode: v),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _SecuritySectionCard(
+                    icon: Icons.shield_outlined,
+                    iconColor: const Color(0xFF64748B),
+                    title: _tr(lang, '개인정보', 'Privacy'),
+                    child: Column(
+                      children: [
+                        _buildSwitchTile(
+                          context: context,
+                          provider: provider,
+                          lang: lang,
+                          title: _tr(lang, '프라이빗 모드', 'Private Mode'),
+                          subtitle: _tr(lang, '개인정보 노출 최소화', 'Reduce personal info exposure'),
+                          value: settings.privateMode,
+                          onChanged: (v) => provider.updateSettings(
+                            settings.copyWith(privateMode: v),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildProfilePrivacyTile(
+                          context: context,
+                          provider: provider,
+                          lang: lang,
+                          current: settings.profilePrivacy,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _SecuritySectionCard(
+                    icon: Icons.campaign_outlined,
+                    iconColor: const Color(0xFFF58220),
+                    title: _tr(lang, '알림', 'Notifications'),
+                    child: _buildSwitchTile(
+                      context: context,
+                      provider: provider,
+                      lang: lang,
+                      title: _tr(lang, '마케팅 수신', 'Marketing'),
+                      subtitle: _tr(lang, '이벤트·프로모션 알림', 'Events & promotions'),
+                      value: settings.marketing,
+                      onChanged: (v) => provider.updateSettings(
+                        settings.copyWith(marketing: v),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required BuildContext context,
+    required AppProvider provider,
+    required String lang,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        title: Text(
+          title,
+          style: SettingsScreen._korean(
+            size: 14,
+            weight: FontWeight.w600,
+            color: const Color(0xFF0F172A),
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: SettingsScreen._korean(
+            size: 11,
+            color: const Color(0xFF64748B),
+          ),
+        ),
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: const Color(0xFF4B61D1),
+      ),
+    );
+  }
+
+  Widget _buildProfilePrivacyTile({
+    required BuildContext context,
+    required AppProvider provider,
+    required String lang,
+    required ProfilePrivacy current,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _tr(lang, '프로필 공개 범위', 'Profile visibility'),
+            style: SettingsScreen._korean(
+              size: 14,
+              weight: FontWeight.w600,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _tr(lang, '명함·포트폴리오 공개 설정', 'Card & portfolio visibility'),
+            style: SettingsScreen._korean(
+              size: 11,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var i = 0; i < ProfilePrivacy.values.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: _AppSettingsChip(
+                    label: _profilePrivacyLabel(lang, ProfilePrivacy.values[i]),
+                    isSelected: ProfilePrivacy.values[i] == current,
+                    onTap: () => provider.updateSettings(
+                      provider.settings.copyWith(
+                        profilePrivacy: ProfilePrivacy.values[i],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppSettingsChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _AppSettingsChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isSelected ? const Color(0xFF4B61D1) : const Color(0xFFE2E8F0),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Center(
+            child: Text(
+              label,
+              style: SettingsScreen._korean(
+                size: 12,
+                weight: FontWeight.w600,
+                color: isSelected ? Colors.white : const Color(0xFF64748B),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -745,14 +1190,12 @@ class _MenuTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final bool isExternal;
 
   const _MenuTile({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.isExternal = false,
   });
 
   @override
@@ -783,6 +1226,8 @@ class _MenuTile extends StatelessWidget {
                   children: [
                     Text(
                       title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: SettingsScreen._korean(
                         size: 15,
                         weight: FontWeight.w500,
@@ -793,6 +1238,8 @@ class _MenuTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: SettingsScreen._korean(
                           size: 11,
                           weight: FontWeight.w400,
@@ -805,9 +1252,7 @@ class _MenuTile extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Icon(
-                isExternal
-                    ? Icons.open_in_new_rounded
-                    : Icons.chevron_right_rounded,
+                Icons.chevron_right_rounded,
                 size: 24,
                 color: const Color(0xFF3F3F46),
               ),
@@ -828,6 +1273,8 @@ class _SwitchTile extends StatelessWidget {
   final Color activeColor;
   final double switchScale;
 
+  final double? titleSize;
+
   const _SwitchTile({
     required this.icon,
     required this.title,
@@ -836,6 +1283,7 @@ class _SwitchTile extends StatelessWidget {
     required this.onChanged,
     required this.activeColor,
     this.switchScale = 0.92,
+    this.titleSize,
   });
 
   @override
@@ -853,8 +1301,10 @@ class _SwitchTile extends StatelessWidget {
               children: [
                 Text(
                   title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: SettingsScreen._korean(
-                    size: 15,
+                    size: titleSize ?? 15,
                     weight: FontWeight.w500,
                     color: SettingsScreen._title,
                   ),
@@ -862,6 +1312,8 @@ class _SwitchTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: SettingsScreen._korean(
                     size: 11,
                     weight: FontWeight.w400,
@@ -902,6 +1354,7 @@ class _ProfileEditScreen extends StatefulWidget {
 
 class _ProfileEditScreenState extends State<_ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   final TextEditingController _sloganController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _jobTitleController = TextEditingController();
@@ -951,6 +1404,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _sloganControllerOrNull?.dispose();
     _nameControllerOrNull?.dispose();
     _jobTitleControllerOrNull?.dispose();
@@ -1039,6 +1493,12 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
     });
   }
 
+  void _removeImage() {
+    setState(() {
+      _avatarDataUrl = null;
+    });
+  }
+
   ImageProvider<Object>? _avatarProvider() {
     final value = _avatarDataUrl?.trim() ?? '';
     if (value.isEmpty) return null;
@@ -1121,7 +1581,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
             Text(
               'Edit Profile',
               style: SettingsScreen._inter(
-                size: 10,
+                size: 9,
                 weight: FontWeight.w700,
                 color: const Color(0xFF94A3B8),
                 letterSpacing: 1.1,
@@ -1216,6 +1676,36 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                         ),
                       ),
                     ),
+                    if (avatar != null)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: InkWell(
+                          onTap: _removeImage,
+                          borderRadius: BorderRadius.circular(999),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x33000000),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 26),
@@ -1271,14 +1761,6 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                   child: Column(
                     children: [
                       _buildLabeledInput(
-                        controller: _emailController,
-                        label: _tr(lang, '이메일', 'Email'),
-                        subLabel: 'Email',
-                        hint: 'example@nuggo.me',
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildLabeledInput(
                         controller: _phoneController,
                         label: _tr(lang, '전화번호', 'Phone'),
                         subLabel: 'Phone',
@@ -1292,6 +1774,14 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                         subLabel: 'SMS',
                         hint: _tr(lang, 'SMS 번호', 'SMS number'),
                         keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLabeledInput(
+                        controller: _emailController,
+                        label: _tr(lang, '이메일', 'Email'),
+                        subLabel: 'Email',
+                        hint: 'example@nuggo.me',
+                        keyboardType: TextInputType.emailAddress,
                       ),
                     ],
                   ),
@@ -1318,6 +1808,13 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                         hint: _tr(lang, '카카오 ID', 'Kakao ID'),
                       ),
                       const SizedBox(height: 12),
+                      _buildLabeledInput(
+                        controller: _shareLinkController,
+                        label: _tr(lang, '공유 링크', 'Share Link'),
+                        subLabel: 'Share Link',
+                        hint: 'nuggo.me/username',
+                      ),
+                      const SizedBox(height: 12),
                       _buildPortfolioInput(
                         lang: lang,
                         controller: _portfolioController,
@@ -1331,13 +1828,6 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                           _portfolioFile = null;
                           _portfolioFileName = null;
                         }),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildLabeledInput(
-                        controller: _shareLinkController,
-                        label: _tr(lang, '공유 링크', 'Share Link'),
-                        subLabel: 'Share Link',
-                        hint: 'nuggo.me/username',
                       ),
                       const SizedBox(height: 12),
                       _buildLabeledInput(
@@ -1356,7 +1846,6 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
             );
           },
         ),
-      ),
     );
   }
 
@@ -1389,7 +1878,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
               Text(
                 title.toUpperCase(),
                 style: SettingsScreen._inter(
-                  size: 11,
+                  size: 10,
                   weight: FontWeight.w700,
                   color: const Color(0xFF94A3B8),
                   letterSpacing: 0.9,
@@ -1428,7 +1917,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                 TextSpan(
                   text: '  $subLabel',
                   style: SettingsScreen._inter(
-                    size: 10,
+                    size: 9,
                     weight: FontWeight.w400,
                     color: const Color(0xFF94A3B8),
                   ),
@@ -1496,7 +1985,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                 TextSpan(
                   text: '  $subLabel',
                   style: SettingsScreen._inter(
-                    size: 10,
+                    size: 9,
                     weight: FontWeight.w400,
                     color: const Color(0xFF94A3B8),
                   ),
@@ -1584,8 +2073,8 @@ class _SubscriptionSecurityScreen extends StatelessWidget {
         final user = provider.currentUser;
         final lang = provider.settings.language;
         final planText = provider.isPro
-            ? _tr(lang, '프리미엄 플랜 사용 중', 'Premium plan active')
-            : _tr(lang, '무료 플랜 사용 중', 'Free plan active');
+            ? _tr(lang, '프리미엄 플랜 사용 중', 'Premium plan')
+            : _tr(lang, '무료플랜 사용 중', 'Free plan');
         final providerText = user == null ? '-' : user.provider.name.toUpperCase();
 
         return Scaffold(
@@ -1611,7 +2100,7 @@ class _SubscriptionSecurityScreen extends StatelessWidget {
                 Text(
                   'Subscription & Security',
                   style: SettingsScreen._inter(
-                    size: 10,
+                    size: 9,
                     weight: FontWeight.w700,
                     color: const Color(0xFF94A3B8),
                     letterSpacing: 1.1,
@@ -1804,7 +2293,7 @@ class _SecuritySectionCard extends StatelessWidget {
               Text(
                 title.toUpperCase(),
                 style: SettingsScreen._inter(
-                  size: 11,
+                  size: 10,
                   weight: FontWeight.w700,
                   color: const Color(0xFF94A3B8),
                   letterSpacing: 0.9,
@@ -1854,6 +2343,8 @@ class _SecurityInfoTile extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: SettingsScreen._korean(
                 size: 13,
                 weight: FontWeight.w600,
@@ -1867,63 +2358,433 @@ class _SecurityInfoTile extends StatelessWidget {
   }
 }
 
+class _NFCGuideScreen extends StatefulWidget {
+  final String exampleUrl;
+
+  const _NFCGuideScreen({required this.exampleUrl});
+
+  @override
+  State<_NFCGuideScreen> createState() => _NFCGuideScreenState();
+}
+
+class _NFCGuideScreenState extends State<_NFCGuideScreen> {
+  late bool _isIphone;
+
+  @override
+  void initState() {
+    super.initState();
+    _isIphone = defaultTargetPlatform == TargetPlatform.iOS;
+  }
+
+  String _tr(String lang, String ko, String en) => lang == 'en' ? en : ko;
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = context.select<AppProvider, String>((p) => p.settings.language);
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FC),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF8F9FC),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Column(
+          children: [
+            Text(
+              _tr(lang, 'NFC 가이드', 'NFC Guide'),
+              style: SettingsScreen._korean(
+                size: 20,
+                weight: FontWeight.w700,
+                color: const Color(0xFF111827),
+              ),
+            ),
+            Text(
+              _tr(lang, '나만의 NFC 카드 만들기', 'Make your NFC card'),
+              style: SettingsScreen._inter(
+                size: 9,
+                weight: FontWeight.w700,
+                color: const Color(0xFF94A3B8),
+                letterSpacing: 1.1,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _TabChip(
+                    label: 'iPhone',
+                    isSelected: _isIphone,
+                    onTap: () => setState(() => _isIphone = true),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _TabChip(
+                    label: 'Android',
+                    isSelected: !_isIphone,
+                    onTap: () => setState(() => _isIphone = false),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _GuideStep(
+              step: 1,
+              title: _tr(lang, '앱 설치하기', 'Install the app'),
+              body: _isIphone
+                  ? _tr(lang, 'App Store에서 \'NFC Tools\' 앱을 검색하여 설치해주세요. 무료 버전으로도 충분합니다.', 'Search and install \'NFC Tools\' from App Store. Free version is enough.')
+                  : _tr(lang, 'Play Store에서 \'NFC Tools\' 앱을 검색하여 설치해주세요. 무료 버전으로도 충분합니다.', 'Search and install \'NFC Tools\' from Play Store. Free version is enough.'),
+            ),
+            const SizedBox(height: 20),
+            _GuideStep(
+              step: 2,
+              title: _tr(lang, '쓰기(Write) 모드', 'Write mode'),
+              body: _tr(lang, '앱 메뉴에서 \'Write\' 탭을 선택한 뒤 \'Add a record\' 버튼을 누르세요.', 'Select \'Write\' tab and tap \'Add a record\' button.'),
+            ),
+            const SizedBox(height: 20),
+            _GuideStep(
+              step: 3,
+              title: _tr(lang, '내 링크 입력', 'Enter your link'),
+              body: _tr(lang, '목록에서 \'URL / URI\'를 선택하고 내 명함 링크를 입력합니다.', 'Select \'URL / URI\' and enter your card link.'),
+              trailing: Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.link, size: 14, color: Colors.grey.shade600),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.exampleUrl,
+                        style: SettingsScreen._inter(
+                          size: 11,
+                          weight: FontWeight.w500,
+                          color: const Color(0xFF64748B),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _GuideStep(
+              step: 4,
+              title: _tr(lang, '카드에 쓰기', 'Write to card'),
+              body: _isIphone
+                  ? _tr(lang, '\'Write / Bytes\' 버튼을 누르고 준비한 공NFC 카드를 휴대폰 상단 뒷면에 갖다 대세요.', 'Tap \'Write / Bytes\' and hold your blank NFC card to the top back of your phone.')
+                  : _tr(lang, '\'Write / Bytes\' 버튼을 누르고 준비한 공NFC 카드를 휴대폰 중앙 뒷면에 갖다 대세요.', 'Tap \'Write / Bytes\' and hold your blank NFC card to the center back of your phone.'),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.lightbulb_outline, size: 18, color: Colors.amber.shade700),
+                      const SizedBox(width: 8),
+                      Text(
+                        _tr(lang, 'Tip', 'Tip').toUpperCase(),
+                        style: SettingsScreen._inter(
+                          size: 10,
+                          weight: FontWeight.w700,
+                          color: Colors.amber.shade800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _tr(lang, '완료 후에는 카드를 휴대폰에 태그하여 링크가 잘 열리는지 확인해보세요. 금속 표면 위에서는 인식이 안될 수 있습니다.', 'After writing, tap the card to your phone to verify. It may not work on metal surfaces.'),
+                    style: SettingsScreen._korean(
+                      size: 12,
+                      weight: FontWeight.w400,
+                      color: const Color(0xFF92400E),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            Container(
+              padding: const EdgeInsets.only(top: 20),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey.shade200)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.contact_support_outlined, size: 18, color: AppTheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        _tr(lang, '폰끼리 터치해서 보낼 순 없나요?', 'Can phones share via NFC touch?'),
+                        style: SettingsScreen._korean(
+                          size: 14,
+                          weight: FontWeight.w700,
+                          color: const Color(0xFF111827),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _tr(lang, '현재 스마트폰 보안 정책상 웹사이트가 실행 중인 폰이 직접 NFC 태그 역할(카드 역할)을 하는 것은 불가능합니다. (HCE 미지원)', 'Phones cannot act as NFC tags (card role) due to security policy. HCE not supported.'),
+                          style: SettingsScreen._korean(
+                            size: 12,
+                            weight: FontWeight.w400,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Icon(Icons.check_circle, size: 16, color: Colors.green.shade600),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _tr(lang, '대신 QR코드를 보여주세요.', 'Use QR code instead.'),
+                                style: SettingsScreen._korean(
+                                  size: 12,
+                                  weight: FontWeight.w700,
+                                  color: const Color(0xFF334155),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.check_circle, size: 16, color: Colors.blue.shade600),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _tr(lang, '공유하기(카카오톡/AirDrop)를 이용하세요.', 'Use Share (KakaoTalk/AirDrop).'),
+                                style: SettingsScreen._korean(
+                                  size: 12,
+                                  weight: FontWeight.w700,
+                                  color: const Color(0xFF334155),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF111827),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text(
+                  _tr(lang, '확인 완료', 'Got it'),
+                  style: SettingsScreen._korean(size: 14, weight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TabChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _TabChip({required this.label, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isSelected ? const Color(0xFF111827) : const Color(0xFFE2E8F0),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Center(
+            child: Text(
+              label,
+              style: SettingsScreen._korean(
+                size: 14,
+                weight: FontWeight.w700,
+                color: isSelected ? Colors.white : const Color(0xFF64748B),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuideStep extends StatelessWidget {
+  final int step;
+  final String title;
+  final String body;
+  final Widget? trailing;
+
+  const _GuideStep({
+    required this.step,
+    required this.title,
+    required this.body,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(
+                child: Text(
+                  '$step',
+                  style: SettingsScreen._korean(
+                    size: 14,
+                    weight: FontWeight.w700,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: SettingsScreen._korean(
+                      size: 15,
+                      weight: FontWeight.w700,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    body,
+                    style: SettingsScreen._korean(
+                      size: 13,
+                      weight: FontWeight.w400,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                  if (trailing != null) trailing!,
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _BottomAuthCta extends StatelessWidget {
   final bool isGuest;
   final String language;
   final VoidCallback onPrimaryTap;
-  final VoidCallback onLogoutTap;
 
   const _BottomAuthCta({
     required this.isGuest,
     required this.language,
     required this.onPrimaryTap,
-    required this.onLogoutTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
         color: const Color(0xE60A0A0A),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF1C1C1E)),
       ),
-      child: Column(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: onPrimaryTap,
-              style: FilledButton.styleFrom(
-                backgroundColor: SettingsScreen._accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                language == 'en'
-                    ? (isGuest ? 'Sign In / Sign Up' : 'Exit Browsing')
-                    : (isGuest ? '로그인 / 회원가입' : '둘러보기 종료'),
-                style: SettingsScreen._korean(size: 14, weight: FontWeight.w700),
-              ),
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: onPrimaryTap,
+          style: FilledButton.styleFrom(
+            backgroundColor: SettingsScreen._accent,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: onLogoutTap,
-            child: Text(
-              language == 'en' ? 'Log Out' : '로그아웃',
-              style: SettingsScreen._korean(
-                size: 13,
-                weight: FontWeight.w500,
-                color: const Color(0xFF71717A),
-              ),
-            ),
+          child: Text(
+            language == 'en'
+                ? (isGuest ? 'Sign In / Sign Up' : 'Log Out')
+                : (isGuest ? '로그인 / 회원가입' : '로그아웃'),
+            style: SettingsScreen._korean(size: 14, weight: FontWeight.w700),
           ),
-        ],
+        ),
       ),
     );
   }

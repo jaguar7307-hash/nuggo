@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../models/profile.dart';
@@ -36,6 +37,7 @@ class AppProvider with ChangeNotifier {
   String? _activeProfileId;
   String? _selectedProfileId;
   Profile? _lastDeletedProfile;
+  bool _hasBasicProfile = false;
 
   // Payment Modal
   bool _isPaymentModalOpen = false;
@@ -70,6 +72,7 @@ class AppProvider with ChangeNotifier {
 
   bool get isPaymentModalOpen => _isPaymentModalOpen;
   bool get canRestoreProfile => _lastDeletedProfile != null;
+  bool get hasBasicProfile => _hasBasicProfile;
   bool get scrollToBackgroundThemeOnNextBuild =>
       _scrollToBackgroundThemeOnNextBuild;
   bool get isPro => _currentUser?.membership == MembershipTier.pro;
@@ -102,9 +105,37 @@ class AppProvider with ChangeNotifier {
     final results = await Future.wait([
       _storage.getSettings(),
       _storage.getProfiles(),
+      _storage.getHasBasicProfile(),
     ]);
     _settings = results[0] as AppSettings;
     _savedProfiles = results[1] as List<Profile>;
+    _hasBasicProfile = results[2] as bool;
+
+    // 마이그레이션: 이전 기본값(Jane Doe 등)이면 새 빈 칸 기본값으로 교체
+    // 디버그 모드: 저장된 프로필과 무관하게 항상 빈 칸으로 (테스트용)
+    bool migrated = false;
+    _savedProfiles = _savedProfiles.map((p) {
+      final shouldReset = kDebugMode || AppConstants.isLegacyDefault(p.data);
+      if (shouldReset) {
+        migrated = true;
+        return Profile(
+          id: p.id,
+          name: p.name,
+          data: AppConstants.initialCardData.copyWith(
+            theme: p.data.theme,
+            font: p.data.font,
+          ),
+        );
+      }
+      return p;
+    }).toList();
+    if (migrated) unawaited(_storage.saveProfiles(_savedProfiles));
+
+    // 기존 사용자: 저장된 프로필이 있으면 기본 프로필 존재로 간주
+    if (!_hasBasicProfile && _savedProfiles.isNotEmpty) {
+      _hasBasicProfile = true;
+      unawaited(_storage.setHasBasicProfile(true));
+    }
 
     if (_savedProfiles.isEmpty) {
       _savedProfiles.add(
@@ -122,6 +153,11 @@ class AppProvider with ChangeNotifier {
       _cardsMap[first.data.theme] = first.data;
       _activeThemeUrl = first.data.theme;
       _activeProfileId = first.id;
+    }
+    // 디버그 모드: 앱 재실행 시 기본 프로필 초기화 (스낵바 테스트용)
+    if (kDebugMode) {
+      _hasBasicProfile = false;
+      unawaited(_storage.setHasBasicProfile(false));
     }
     notifyListeners();
     unawaited(_restoreSession());
@@ -219,7 +255,7 @@ class AppProvider with ChangeNotifier {
       name: name.trim(),
       email: email.trim(),
       phoneNumber: normalizedPhone.isEmpty ? null : normalizedPhone,
-      avatarUrl: avatarUrl ?? _currentUser!.avatarUrl,
+      avatarUrl: avatarUrl,
     );
     _currentUser = updated;
 
@@ -302,6 +338,35 @@ class AppProvider with ChangeNotifier {
   }
 
   // Profile Methods
+  /// 동일 테마를 쓰는 모든 프로필의 카드 데이터를 newData로 동기화 (내 명함 화면 반영용)
+  Future<void> syncProfilesWithCardData(CardData newData) async {
+    bool changed = false;
+    _savedProfiles = _savedProfiles.map((p) {
+      if (p.data.theme == newData.theme) {
+        changed = true;
+        return Profile(id: p.id, name: p.name, data: newData);
+      }
+      return p;
+    }).toList();
+    if (changed) {
+      await _storage.saveProfiles(_savedProfiles);
+      await _markBasicProfileExists();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _markBasicProfileExists() async {
+    if (_hasBasicProfile) return;
+    _hasBasicProfile = true;
+    await _storage.setHasBasicProfile(true);
+  }
+
+  /// 프로필 편집 등에서 저장 시 기본 프로필 존재로 표시
+  Future<void> markBasicProfileExists() async {
+    await _markBasicProfileExists();
+    notifyListeners();
+  }
+
   Future<void> saveProfile(Profile profile) async {
     final exists = _savedProfiles.any((p) => p.id == profile.id);
 
@@ -315,6 +380,7 @@ class AppProvider with ChangeNotifier {
 
     _activeProfileId = profile.id;
     await _storage.saveProfiles(_savedProfiles);
+    await _markBasicProfileExists();
     notifyListeners();
   }
 

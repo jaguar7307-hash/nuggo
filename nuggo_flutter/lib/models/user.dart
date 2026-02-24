@@ -46,6 +46,8 @@ class User {
     this.lastLoginAt,
   });
 
+  static const _undefined = Object();
+
   User copyWith({
     String? email,
     String? name,
@@ -53,7 +55,7 @@ class User {
     String? joinedDate,
     bool? isGuest,
     AuthProvider? provider,
-    String? avatarUrl,
+    Object? avatarUrl = _undefined,
     String? phoneNumber,
     MembershipTier? membership,
     String? lockPin,
@@ -70,7 +72,7 @@ class User {
       joinedDate: joinedDate ?? this.joinedDate,
       isGuest: isGuest ?? this.isGuest,
       provider: provider ?? this.provider,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
+      avatarUrl: avatarUrl == _undefined ? this.avatarUrl : avatarUrl as String?,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       membership: membership ?? this.membership,
       lockPin: lockPin ?? this.lockPin,
