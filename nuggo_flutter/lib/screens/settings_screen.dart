@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../constants/constants.dart';
 import '../constants/theme.dart';
+import '../models/app_settings.dart';
 import '../models/card_data.dart';
 import '../models/user.dart';
 import '../providers/app_provider.dart';
@@ -166,10 +167,7 @@ class SettingsScreen extends StatelessWidget {
                                   icon: Icons.apps_rounded,
                                   title: _tr(lang, '앱 설정', 'App Settings'),
                                   subtitle: _tr(lang, '앱 전반 동작 설정', 'App behavior'),
-                                  onTap: () => _showPlaceholder(
-                                    navContext,
-                                    _tr(lang, '앱 설정 세부 화면을 준비 중입니다.', 'Detailed app settings are coming soon.'),
-                                  ),
+                                  onTap: () => _openAppSettings(navContext, provider),
                                 ),
                                 _SwitchTile(
                                   icon: Icons.language_rounded,
@@ -532,6 +530,28 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  static Future<void> _openAppSettings(
+    BuildContext context,
+    AppProvider provider,
+  ) async {
+    await Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (_, __, ___) => const _AppSettingsScreen(),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
+      ),
+    );
+  }
+
   static Future<void> _openNFCGuide(
     BuildContext context,
     AppProvider provider,
@@ -704,6 +724,297 @@ class _LegalContentScreen extends StatelessWidget {
               size: 13,
               height: 1.6,
               color: const Color(0xFF334155),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AppSettingsScreen extends StatelessWidget {
+  const _AppSettingsScreen();
+
+  String _tr(String lang, String ko, String en) => lang == 'en' ? en : ko;
+
+  String _profilePrivacyLabel(String lang, ProfilePrivacy p) {
+    switch (p) {
+      case ProfilePrivacy.public:
+        return _tr(lang, '전체 공개', 'Public');
+      case ProfilePrivacy.linkOnly:
+        return _tr(lang, '링크 공유만', 'Link only');
+      case ProfilePrivacy.private:
+        return _tr(lang, '비공개', 'Private');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AppProvider>(
+      builder: (context, provider, _) {
+        final lang = provider.settings.language;
+        final settings = provider.settings;
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8F9FC),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFFF8F9FC),
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              color: const Color(0xFF111827),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: Column(
+              children: [
+                Text(
+                  _tr(lang, '앱 설정', 'App Settings'),
+                  style: SettingsScreen._korean(
+                    size: 20,
+                    weight: FontWeight.w700,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+                Text(
+                  'App Settings',
+                  style: SettingsScreen._inter(
+                    size: 9,
+                    weight: FontWeight.w700,
+                    color: const Color(0xFF94A3B8),
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ],
+            ),
+            centerTitle: true,
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                children: [
+                  _SecuritySectionCard(
+                    icon: Icons.tune_rounded,
+                    iconColor: const Color(0xFF4B61D1),
+                    title: _tr(lang, '일반', 'General'),
+                    child: Column(
+                      children: [
+                        _buildSwitchTile(
+                          context: context,
+                          provider: provider,
+                          lang: lang,
+                          title: _tr(lang, '사운드', 'Sound'),
+                          subtitle: _tr(lang, '효과음 사용', 'Use sound effects'),
+                          value: settings.sound,
+                          onChanged: (v) => provider.updateSettings(
+                            settings.copyWith(sound: v),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildSwitchTile(
+                          context: context,
+                          provider: provider,
+                          lang: lang,
+                          title: _tr(lang, '햅틱', 'Haptic'),
+                          subtitle: _tr(lang, '진동 피드백 사용', 'Use vibration feedback'),
+                          value: settings.haptic,
+                          onChanged: (v) => provider.updateSettings(
+                            settings.copyWith(haptic: v),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildSwitchTile(
+                          context: context,
+                          provider: provider,
+                          lang: lang,
+                          title: _tr(lang, '다크 모드', 'Dark Mode'),
+                          subtitle: _tr(lang, '앱 테마를 어둡게', 'Use dark theme'),
+                          value: settings.darkMode,
+                          onChanged: (v) => provider.updateSettings(
+                            settings.copyWith(darkMode: v),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _SecuritySectionCard(
+                    icon: Icons.shield_outlined,
+                    iconColor: const Color(0xFF64748B),
+                    title: _tr(lang, '개인정보', 'Privacy'),
+                    child: Column(
+                      children: [
+                        _buildSwitchTile(
+                          context: context,
+                          provider: provider,
+                          lang: lang,
+                          title: _tr(lang, '프라이빗 모드', 'Private Mode'),
+                          subtitle: _tr(lang, '개인정보 노출 최소화', 'Reduce personal info exposure'),
+                          value: settings.privateMode,
+                          onChanged: (v) => provider.updateSettings(
+                            settings.copyWith(privateMode: v),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildProfilePrivacyTile(
+                          context: context,
+                          provider: provider,
+                          lang: lang,
+                          current: settings.profilePrivacy,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _SecuritySectionCard(
+                    icon: Icons.campaign_outlined,
+                    iconColor: const Color(0xFFF58220),
+                    title: _tr(lang, '알림', 'Notifications'),
+                    child: _buildSwitchTile(
+                      context: context,
+                      provider: provider,
+                      lang: lang,
+                      title: _tr(lang, '마케팅 수신', 'Marketing'),
+                      subtitle: _tr(lang, '이벤트·프로모션 알림', 'Events & promotions'),
+                      value: settings.marketing,
+                      onChanged: (v) => provider.updateSettings(
+                        settings.copyWith(marketing: v),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required BuildContext context,
+    required AppProvider provider,
+    required String lang,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        title: Text(
+          title,
+          style: SettingsScreen._korean(
+            size: 14,
+            weight: FontWeight.w600,
+            color: const Color(0xFF0F172A),
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: SettingsScreen._korean(
+            size: 11,
+            color: const Color(0xFF64748B),
+          ),
+        ),
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: const Color(0xFF4B61D1),
+      ),
+    );
+  }
+
+  Widget _buildProfilePrivacyTile({
+    required BuildContext context,
+    required AppProvider provider,
+    required String lang,
+    required ProfilePrivacy current,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _tr(lang, '프로필 공개 범위', 'Profile visibility'),
+            style: SettingsScreen._korean(
+              size: 14,
+              weight: FontWeight.w600,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _tr(lang, '명함·포트폴리오 공개 설정', 'Card & portfolio visibility'),
+            style: SettingsScreen._korean(
+              size: 11,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var i = 0; i < ProfilePrivacy.values.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: _AppSettingsChip(
+                    label: _profilePrivacyLabel(lang, ProfilePrivacy.values[i]),
+                    isSelected: ProfilePrivacy.values[i] == current,
+                    onTap: () => provider.updateSettings(
+                      provider.settings.copyWith(
+                        profilePrivacy: ProfilePrivacy.values[i],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppSettingsChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _AppSettingsChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isSelected ? const Color(0xFF4B61D1) : const Color(0xFFE2E8F0),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Center(
+            child: Text(
+              label,
+              style: SettingsScreen._korean(
+                size: 12,
+                weight: FontWeight.w600,
+                color: isSelected ? Colors.white : const Color(0xFF64748B),
+              ),
             ),
           ),
         ),
