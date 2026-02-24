@@ -254,7 +254,10 @@ class _EditorScreenState extends State<EditorScreen> {
           });
         }
 
-        return Container(
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Container(
           color: const Color(0xFF0B0B0B),
           width: double.infinity,
           child: Stack(
@@ -264,6 +267,8 @@ class _EditorScreenState extends State<EditorScreen> {
                   final width = constraints.maxWidth;
                   return SingleChildScrollView(
                     controller: _editorScrollController,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
                     ),
@@ -310,6 +315,7 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
             ],
           ),
+        ),
         );
       },
     );
