@@ -53,8 +53,10 @@ class CardData {
     this.portfolioFileName,
   });
 
+  static const _undefined = Object();
+
   CardData copyWith({
-    String? profileImage,
+    Object? profileImage = _undefined,
     String? slogan,
     String? fullName,
     String? jobTitle,
@@ -74,7 +76,7 @@ class CardData {
     String? portfolioFileName,
   }) {
     return CardData(
-      profileImage: profileImage ?? this.profileImage,
+      profileImage: profileImage == _undefined ? this.profileImage : profileImage as String?,
       slogan: slogan ?? this.slogan,
       fullName: fullName ?? this.fullName,
       jobTitle: jobTitle ?? this.jobTitle,

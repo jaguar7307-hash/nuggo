@@ -219,7 +219,7 @@ class AppProvider with ChangeNotifier {
       name: name.trim(),
       email: email.trim(),
       phoneNumber: normalizedPhone.isEmpty ? null : normalizedPhone,
-      avatarUrl: avatarUrl ?? _currentUser!.avatarUrl,
+      avatarUrl: avatarUrl,
     );
     _currentUser = updated;
 
