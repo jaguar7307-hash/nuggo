@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -1911,7 +1912,13 @@ class _NFCGuideScreen extends StatefulWidget {
 }
 
 class _NFCGuideScreenState extends State<_NFCGuideScreen> {
-  bool _isIphone = true;
+  late bool _isIphone;
+
+  @override
+  void initState() {
+    super.initState();
+    _isIphone = defaultTargetPlatform == TargetPlatform.iOS;
+  }
 
   String _tr(String lang, String ko, String en) => lang == 'en' ? en : ko;
 
