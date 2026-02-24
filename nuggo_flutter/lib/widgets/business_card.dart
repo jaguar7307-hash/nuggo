@@ -112,10 +112,13 @@ class BusinessCard extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            _buildTopSection(
-                              context,
-                              textColor: textColor,
-                              hasProfileImage: hasProfileImage,
+                            Flexible(
+                              fit: FlexFit.loose,
+                              child: _buildTopSection(
+                                context,
+                                textColor: textColor,
+                                hasProfileImage: hasProfileImage,
+                              ),
                             ),
                             _buildIdentitySection(
                               textColor: textColor,
@@ -155,8 +158,8 @@ class BusinessCard extends StatelessWidget {
           children: [
             if (hasProfileImage)
               Container(
-                width: 48,
-                height: 48,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
@@ -179,14 +182,14 @@ class BusinessCard extends StatelessWidget {
                   ),
                 ),
               ),
-            if (hasProfileImage && hasSlogan) const SizedBox(height: 6),
+            if (hasProfileImage && hasSlogan) const SizedBox(height: 4),
             if (hasSlogan)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Text(
                   '"${data.slogan}"',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     color: textColor,
                     fontStyle: FontStyle.italic,
                   ),
