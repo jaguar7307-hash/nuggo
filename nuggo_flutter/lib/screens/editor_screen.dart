@@ -880,6 +880,7 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.phone,
             value: data.phone,
             placeholder: t['placeholders.phone']!,
+            keyboardType: TextInputType.phone,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(phone: value)),
           ),
@@ -889,6 +890,7 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.sms,
             value: data.sms,
             placeholder: t['placeholders.sms']!,
+            keyboardType: TextInputType.phone,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(sms: value)),
           ),
@@ -898,6 +900,7 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.email,
             value: data.email,
             placeholder: t['placeholders.email']!,
+            keyboardType: TextInputType.emailAddress,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(email: value)),
           ),
@@ -912,6 +915,7 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.language,
             value: data.website,
             placeholder: t['placeholders.website']!,
+            keyboardType: TextInputType.url,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(website: value)),
           ),
@@ -930,6 +934,7 @@ class _EditorScreenState extends State<EditorScreen> {
             icon: Icons.share,
             value: data.shareLink,
             placeholder: t['placeholders.shareLink']!,
+            keyboardType: TextInputType.url,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(shareLink: value)),
           ),
@@ -1623,6 +1628,7 @@ class _EditorScreenState extends State<EditorScreen> {
     required String value,
     required String placeholder,
     required Function(String) onChanged,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     final controller = _getFormController(fieldKey, value);
     return Container(
@@ -1641,6 +1647,7 @@ class _EditorScreenState extends State<EditorScreen> {
               controller: controller,
               onChanged: (value) => onChanged(value),
               textInputAction: TextInputAction.next,
+              keyboardType: keyboardType,
               decoration: InputDecoration(
                 hintText: placeholder,
                 hintStyle: _inputHintStyle,
