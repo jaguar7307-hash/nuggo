@@ -66,12 +66,11 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: _bg,
-      child: SafeArea(
-        child: Navigator(
-          onGenerateRoute: (settings) {
-            return MaterialPageRoute<void>(
-              builder: (navContext) {
-                return Consumer<AppProvider>(
+      child: Navigator(
+        onGenerateRoute: (settings) {
+          return MaterialPageRoute<void>(
+            builder: (navContext) {
+              return Consumer<AppProvider>(
                   builder: (context, provider, _) {
                     final user = provider.currentUser;
                     final settings = provider.settings;
@@ -307,7 +306,6 @@ class SettingsScreen extends StatelessWidget {
             );
           },
         ),
-      ),
     );
   }
 
