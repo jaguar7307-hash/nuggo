@@ -675,34 +675,35 @@ class _LegalContentScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: const Color(0xFFF8F9FC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0A0A),
+        backgroundColor: const Color(0xFFF8F9FC),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          color: const Color(0xFF111827),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           title,
           style: SettingsScreen._korean(
-            size: 18,
+            size: 20,
             weight: FontWeight.w700,
-            color: const Color(0xFFF4F4F5),
+            color: const Color(0xFF111827),
           ),
         ),
         centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           child: SelectableText(
             content,
             style: SettingsScreen._korean(
               size: 13,
               height: 1.6,
-              color: const Color(0xFFD4D4D8),
+              color: const Color(0xFF334155),
             ),
           ),
         ),
