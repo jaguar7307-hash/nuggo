@@ -901,15 +901,6 @@ class _EditorScreenState extends State<EditorScreen> {
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(email: value)),
           ),
-          const SizedBox(height: 12),
-          _buildPillInput(
-            fieldKey: 'kakao',
-            icon: Icons.chat_bubble_outline,
-            value: data.kakao,
-            placeholder: t['placeholders.kakao']!,
-            onChanged: (value) =>
-                provider.updateCardData(data.copyWith(kakao: value)),
-          ),
 
           const SizedBox(height: 24),
 
@@ -925,15 +916,13 @@ class _EditorScreenState extends State<EditorScreen> {
                 provider.updateCardData(data.copyWith(website: value)),
           ),
           const SizedBox(height: 12),
-          _buildPortfolioInput(context, provider, data, t['placeholders.portfolio']!),
-          const SizedBox(height: 12),
           _buildPillInput(
-            fieldKey: 'linkedin',
-            icon: Icons.public,
-            value: data.linkedin,
-            placeholder: t['placeholders.linkedin']!,
+            fieldKey: 'kakao',
+            icon: Icons.chat_bubble_outline,
+            value: data.kakao,
+            placeholder: t['placeholders.kakao']!,
             onChanged: (value) =>
-                provider.updateCardData(data.copyWith(linkedin: value)),
+                provider.updateCardData(data.copyWith(kakao: value)),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -944,6 +933,8 @@ class _EditorScreenState extends State<EditorScreen> {
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(shareLink: value)),
           ),
+          const SizedBox(height: 12),
+          _buildPortfolioInput(context, provider, data, t['placeholders.portfolio']!),
 
           const SizedBox(height: 24),
 
@@ -1271,6 +1262,7 @@ class _EditorScreenState extends State<EditorScreen> {
         TextField(
           controller: controller,
           onChanged: (value) => onChanged(value),
+          textInputAction: TextInputAction.next,
           decoration: InputDecoration(
             border: const UnderlineInputBorder(),
             enabledBorder: UnderlineInputBorder(
@@ -1648,6 +1640,7 @@ class _EditorScreenState extends State<EditorScreen> {
             child: TextField(
               controller: controller,
               onChanged: (value) => onChanged(value),
+              textInputAction: TextInputAction.next,
               decoration: InputDecoration(
                 hintText: placeholder,
                 hintStyle: _inputHintStyle,

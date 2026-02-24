@@ -1271,14 +1271,6 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                   child: Column(
                     children: [
                       _buildLabeledInput(
-                        controller: _emailController,
-                        label: _tr(lang, '이메일', 'Email'),
-                        subLabel: 'Email',
-                        hint: 'example@nuggo.me',
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildLabeledInput(
                         controller: _phoneController,
                         label: _tr(lang, '전화번호', 'Phone'),
                         subLabel: 'Phone',
@@ -1292,6 +1284,14 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                         subLabel: 'SMS',
                         hint: _tr(lang, 'SMS 번호', 'SMS number'),
                         keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLabeledInput(
+                        controller: _emailController,
+                        label: _tr(lang, '이메일', 'Email'),
+                        subLabel: 'Email',
+                        hint: 'example@nuggo.me',
+                        keyboardType: TextInputType.emailAddress,
                       ),
                     ],
                   ),
@@ -1319,11 +1319,10 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                       ),
                       const SizedBox(height: 12),
                       _buildLabeledInput(
-                        controller: _linkedinController,
-                        label: _tr(lang, '링크드인', 'LinkedIn'),
-                        subLabel: 'LinkedIn',
-                        hint: 'linkedin.com/in/username',
-                        keyboardType: TextInputType.url,
+                        controller: _shareLinkController,
+                        label: _tr(lang, '공유 링크', 'Share Link'),
+                        subLabel: 'Share Link',
+                        hint: 'nuggo.me/username',
                       ),
                       const SizedBox(height: 12),
                       _buildPortfolioInput(
@@ -1339,13 +1338,6 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                           _portfolioFile = null;
                           _portfolioFileName = null;
                         }),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildLabeledInput(
-                        controller: _shareLinkController,
-                        label: _tr(lang, '공유 링크', 'Share Link'),
-                        subLabel: 'Share Link',
-                        hint: 'nuggo.me/username',
                       ),
                       const SizedBox(height: 12),
                       _buildLabeledInput(
