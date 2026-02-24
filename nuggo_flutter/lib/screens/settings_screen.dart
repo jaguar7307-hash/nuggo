@@ -171,13 +171,14 @@ class SettingsScreen extends StatelessWidget {
                                 ),
                                 _SwitchTile(
                                   icon: Icons.language_rounded,
-                                  title: _tr(lang, '다국어 선택 (한국어/영어)', 'Language (KO/EN)'),
+                                  title: _tr(lang, '다국어 (한국어/영어)', 'Language (KO/EN)'),
                                   subtitle: settings.language == 'ko'
                                       ? _tr(lang, '현재: 한국어', 'Korean')
                                       : 'English',
                                   value: settings.language == 'en',
                                   activeColor: _accent,
                                   switchScale: 0.92,
+                                  titleSize: 14,
                                   onChanged: (v) async {
                                     await _setAppLanguage(navContext, provider, v);
                                   },
@@ -820,6 +821,8 @@ class _SwitchTile extends StatelessWidget {
   final Color activeColor;
   final double switchScale;
 
+  final double? titleSize;
+
   const _SwitchTile({
     required this.icon,
     required this.title,
@@ -828,6 +831,7 @@ class _SwitchTile extends StatelessWidget {
     required this.onChanged,
     required this.activeColor,
     this.switchScale = 0.92,
+    this.titleSize,
   });
 
   @override
@@ -846,7 +850,7 @@ class _SwitchTile extends StatelessWidget {
                 Text(
                   title,
                   style: SettingsScreen._korean(
-                    size: 15,
+                    size: titleSize ?? 15,
                     weight: FontWeight.w500,
                     color: SettingsScreen._title,
                   ),
@@ -1116,7 +1120,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
             Text(
               'Edit Profile',
               style: SettingsScreen._inter(
-                size: 10,
+                size: 9,
                 weight: FontWeight.w700,
                 color: const Color(0xFF94A3B8),
                 letterSpacing: 1.1,
@@ -1381,7 +1385,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
               Text(
                 title.toUpperCase(),
                 style: SettingsScreen._inter(
-                  size: 11,
+                  size: 10,
                   weight: FontWeight.w700,
                   color: const Color(0xFF94A3B8),
                   letterSpacing: 0.9,
@@ -1420,7 +1424,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                 TextSpan(
                   text: '  $subLabel',
                   style: SettingsScreen._inter(
-                    size: 10,
+                    size: 9,
                     weight: FontWeight.w400,
                     color: const Color(0xFF94A3B8),
                   ),
@@ -1488,7 +1492,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                 TextSpan(
                   text: '  $subLabel',
                   style: SettingsScreen._inter(
-                    size: 10,
+                    size: 9,
                     weight: FontWeight.w400,
                     color: const Color(0xFF94A3B8),
                   ),
@@ -1603,7 +1607,7 @@ class _SubscriptionSecurityScreen extends StatelessWidget {
                 Text(
                   'Subscription & Security',
                   style: SettingsScreen._inter(
-                    size: 10,
+                    size: 9,
                     weight: FontWeight.w700,
                     color: const Color(0xFF94A3B8),
                     letterSpacing: 1.1,
@@ -1796,7 +1800,7 @@ class _SecuritySectionCard extends StatelessWidget {
               Text(
                 title.toUpperCase(),
                 style: SettingsScreen._inter(
-                  size: 11,
+                  size: 10,
                   weight: FontWeight.w700,
                   color: const Color(0xFF94A3B8),
                   letterSpacing: 0.9,
