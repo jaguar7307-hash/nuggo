@@ -430,6 +430,7 @@ class SettingsScreen extends StatelessWidget {
           initialCardData: currentData,
           onSave: (newData) async {
             provider.updateCardData(newData, immediate: true);
+            await provider.syncProfilesWithCardData(newData);
             final safeName = newData.fullName.trim().isEmpty
                 ? user.name
                 : newData.fullName.trim();

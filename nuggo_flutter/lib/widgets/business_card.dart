@@ -185,16 +185,16 @@ class BusinessCard extends StatelessWidget {
             if (hasProfileImage && hasSlogan) const SizedBox(height: 4),
             if (hasSlogan)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Text(
                   '"${data.slogan}"',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 11,
                     color: textColor,
                     fontStyle: FontStyle.italic,
                   ),
                   textAlign: TextAlign.center,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),

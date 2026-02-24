@@ -302,6 +302,22 @@ class AppProvider with ChangeNotifier {
   }
 
   // Profile Methods
+  /// 동일 테마를 쓰는 모든 프로필의 카드 데이터를 newData로 동기화 (내 명함 화면 반영용)
+  Future<void> syncProfilesWithCardData(CardData newData) async {
+    bool changed = false;
+    _savedProfiles = _savedProfiles.map((p) {
+      if (p.data.theme == newData.theme) {
+        changed = true;
+        return Profile(id: p.id, name: p.name, data: newData);
+      }
+      return p;
+    }).toList();
+    if (changed) {
+      await _storage.saveProfiles(_savedProfiles);
+      notifyListeners();
+    }
+  }
+
   Future<void> saveProfile(Profile profile) async {
     final exists = _savedProfiles.any((p) => p.id == profile.id);
 
