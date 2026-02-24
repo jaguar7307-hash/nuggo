@@ -203,23 +203,18 @@ class SettingsScreen extends StatelessWidget {
                                   title: _tr(lang, '개인정보 처리방침', 'Privacy Policy'),
                                   subtitle: '',
                                   onTap: () => _openPrivacyPolicy(navContext, lang),
-                                  isExternal: true,
                                 ),
                                 _MenuTile(
                                   icon: Icons.description_outlined,
                                   title: _tr(lang, '이용약관', 'Terms of Service'),
                                   subtitle: '',
                                   onTap: () => _openTermsOfService(navContext, lang),
-                                  isExternal: true,
                                 ),
                                 _MenuTile(
                                   icon: Icons.support_agent_rounded,
                                   title: _tr(lang, '고객센터 및 도움말', 'Help & Support'),
                                   subtitle: '',
-                                  onTap: () => _showPlaceholder(
-                                    navContext,
-                                    _tr(lang, '고객센터/도움말 내용은 추후 입력해 주세요.', 'Support content will be added soon.'),
-                                  ),
+                                  onTap: () => _openHelpSupport(navContext, lang),
                                 ),
                               ],
                             ),
@@ -330,111 +325,61 @@ class SettingsScreen extends StatelessWidget {
     _showToast(context, _tr(lang, '로그아웃되었습니다.', 'Logged out.'));
   }
 
-  static Future<void> _openPrivacyPolicy(BuildContext context, String lang) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF111113),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  static Future<void> _openContentPage(
+    BuildContext context,
+    String lang,
+    String titleKo,
+    String titleEn,
+    String content,
+  ) async {
+    await Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (_, __, ___) => _LegalContentScreen(
+          title: _tr(lang, titleKo, titleEn),
+          content: content,
+        ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
       ),
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.9,
-          minChildSize: 0.5,
-          maxChildSize: 1,
-          expand: false,
-          builder: (_, scrollController) {
-            return SafeArea(
-              top: false,
-              child: Column(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 4,
-                    margin: const EdgeInsets.only(top: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3F3F46),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                    child: Text(
-                      _tr(lang, '개인정보 처리방침', 'Privacy Policy'),
-                      style: _korean(size: 18, weight: FontWeight.w700),
-                    ),
-                  ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      child: SelectableText(
-                        AppConstants.privacyPolicy,
-                        style: _korean(size: 13, height: 1.6, color: const Color(0xFFD4D4D8)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+    );
+  }
+
+  static Future<void> _openPrivacyPolicy(BuildContext context, String lang) async {
+    await _openContentPage(
+      context,
+      lang,
+      '개인정보 처리방침',
+      'Privacy Policy',
+      AppConstants.privacyPolicy,
     );
   }
 
   static Future<void> _openTermsOfService(BuildContext context, String lang) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF111113),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.9,
-          minChildSize: 0.5,
-          maxChildSize: 1,
-          expand: false,
-          builder: (_, scrollController) {
-            return SafeArea(
-              top: false,
-              child: Column(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 4,
-                    margin: const EdgeInsets.only(top: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3F3F46),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                    child: Text(
-                      _tr(lang, '이용약관', 'Terms of Service'),
-                      style: _korean(size: 18, weight: FontWeight.w700),
-                    ),
-                  ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      child: SelectableText(
-                        AppConstants.termsOfService,
-                        style: _korean(size: 13, height: 1.6, color: const Color(0xFFD4D4D8)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+    await _openContentPage(
+      context,
+      lang,
+      '이용약관',
+      'Terms of Service',
+      AppConstants.termsOfService,
+    );
+  }
+
+  static Future<void> _openHelpSupport(BuildContext context, String lang) async {
+    await _openContentPage(
+      context,
+      lang,
+      '고객센터 및 도움말',
+      'Help & Support',
+      AppConstants.helpAndSupport,
     );
   }
 
@@ -570,8 +515,19 @@ class SettingsScreen extends StatelessWidget {
     AppProvider provider,
   ) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const _SubscriptionSecurityScreen(),
+      PageRouteBuilder(
+        opaque: true,
+        pageBuilder: (_, __, ___) => const _SubscriptionSecurityScreen(),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
       ),
     );
   }
@@ -703,6 +659,54 @@ class SettingsScreen extends StatelessWidget {
       selected == 'ko'
           ? '언어가 한국어로 변경되었습니다.'
           : 'Language changed to English.',
+    );
+  }
+}
+
+class _LegalContentScreen extends StatelessWidget {
+  final String title;
+  final String content;
+
+  const _LegalContentScreen({
+    required this.title,
+    required this.content,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0A0A0A),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          title,
+          style: SettingsScreen._korean(
+            size: 18,
+            weight: FontWeight.w700,
+            color: const Color(0xFFF4F4F5),
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          child: SelectableText(
+            content,
+            style: SettingsScreen._korean(
+              size: 13,
+              height: 1.6,
+              color: const Color(0xFFD4D4D8),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -873,14 +877,12 @@ class _MenuTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final bool isExternal;
 
   const _MenuTile({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.isExternal = false,
   });
 
   @override
@@ -937,9 +939,7 @@ class _MenuTile extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Icon(
-                isExternal
-                    ? Icons.open_in_new_rounded
-                    : Icons.chevron_right_rounded,
+                Icons.chevron_right_rounded,
                 size: 24,
                 color: const Color(0xFF3F3F46),
               ),
