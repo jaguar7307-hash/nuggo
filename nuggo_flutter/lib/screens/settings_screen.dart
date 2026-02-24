@@ -194,10 +194,7 @@ class SettingsScreen extends StatelessWidget {
                                   icon: Icons.nfc_rounded,
                                   title: _tr(lang, 'NFC 카드 만들기 가이드', 'NFC Card Guide'),
                                   subtitle: _tr(lang, '스마트하게 탭하는 방법', 'NFC tap guide'),
-                                  onTap: () => _showPlaceholder(
-                                    navContext,
-                                    _tr(lang, '가이드 본문은 추후 입력해 주세요.', 'Guide content will be added soon.'),
-                                  ),
+                                  onTap: () => _openNFCGuide(navContext, provider),
                                 ),
                                 _MenuTile(
                                   icon: Icons.privacy_tip_outlined,
@@ -470,6 +467,31 @@ class SettingsScreen extends StatelessWidget {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => const _SubscriptionSecurityScreen(),
+      ),
+    );
+  }
+
+  static Future<void> _openNFCGuide(
+    BuildContext context,
+    AppProvider provider,
+  ) async {
+    final shareLink = provider.currentCardData.shareLink.trim();
+    final exampleUrl = shareLink.isEmpty
+        ? 'https://nuggo.me/username'
+        : (shareLink.startsWith('http') ? shareLink : 'https://$shareLink');
+    await Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => _NFCGuideScreen(exampleUrl: exampleUrl),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 200),
       ),
     );
   }
@@ -1875,6 +1897,388 @@ class _SecurityInfoTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _NFCGuideScreen extends StatefulWidget {
+  final String exampleUrl;
+
+  const _NFCGuideScreen({required this.exampleUrl});
+
+  @override
+  State<_NFCGuideScreen> createState() => _NFCGuideScreenState();
+}
+
+class _NFCGuideScreenState extends State<_NFCGuideScreen> {
+  bool _isIphone = true;
+
+  String _tr(String lang, String ko, String en) => lang == 'en' ? en : ko;
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = context.select<AppProvider, String>((p) => p.settings.language);
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FC),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF8F9FC),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Column(
+          children: [
+            Text(
+              _tr(lang, 'NFC 가이드', 'NFC Guide'),
+              style: SettingsScreen._korean(
+                size: 20,
+                weight: FontWeight.w700,
+                color: const Color(0xFF111827),
+              ),
+            ),
+            Text(
+              _tr(lang, '나만의 NFC 카드 만들기', 'Make your NFC card'),
+              style: SettingsScreen._inter(
+                size: 9,
+                weight: FontWeight.w700,
+                color: const Color(0xFF94A3B8),
+                letterSpacing: 1.1,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _TabChip(
+                    label: 'iPhone',
+                    isSelected: _isIphone,
+                    onTap: () => setState(() => _isIphone = true),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _TabChip(
+                    label: 'Android',
+                    isSelected: !_isIphone,
+                    onTap: () => setState(() => _isIphone = false),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _GuideStep(
+              step: 1,
+              title: _tr(lang, '앱 설치하기', 'Install the app'),
+              body: _isIphone
+                  ? _tr(lang, 'App Store에서 \'NFC Tools\' 앱을 검색하여 설치해주세요. 무료 버전으로도 충분합니다.', 'Search and install \'NFC Tools\' from App Store. Free version is enough.')
+                  : _tr(lang, 'Play Store에서 \'NFC Tools\' 앱을 검색하여 설치해주세요. 무료 버전으로도 충분합니다.', 'Search and install \'NFC Tools\' from Play Store. Free version is enough.'),
+            ),
+            const SizedBox(height: 20),
+            _GuideStep(
+              step: 2,
+              title: _tr(lang, '쓰기(Write) 모드', 'Write mode'),
+              body: _tr(lang, '앱 메뉴에서 \'Write\' 탭을 선택한 뒤 \'Add a record\' 버튼을 누르세요.', 'Select \'Write\' tab and tap \'Add a record\' button.'),
+            ),
+            const SizedBox(height: 20),
+            _GuideStep(
+              step: 3,
+              title: _tr(lang, '내 링크 입력', 'Enter your link'),
+              body: _tr(lang, '목록에서 \'URL / URI\'를 선택하고 내 명함 링크를 입력합니다.', 'Select \'URL / URI\' and enter your card link.'),
+              trailing: Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.link, size: 14, color: Colors.grey.shade600),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.exampleUrl,
+                        style: SettingsScreen._inter(
+                          size: 11,
+                          weight: FontWeight.w500,
+                          color: const Color(0xFF64748B),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _GuideStep(
+              step: 4,
+              title: _tr(lang, '카드에 쓰기', 'Write to card'),
+              body: _isIphone
+                  ? _tr(lang, '\'Write / Bytes\' 버튼을 누르고 준비한 공NFC 카드를 휴대폰 상단 뒷면에 갖다 대세요.', 'Tap \'Write / Bytes\' and hold your blank NFC card to the top back of your phone.')
+                  : _tr(lang, '\'Write / Bytes\' 버튼을 누르고 준비한 공NFC 카드를 휴대폰 중앙 뒷면에 갖다 대세요.', 'Tap \'Write / Bytes\' and hold your blank NFC card to the center back of your phone.'),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.lightbulb_outline, size: 18, color: Colors.amber.shade700),
+                      const SizedBox(width: 8),
+                      Text(
+                        _tr(lang, 'Tip', 'Tip').toUpperCase(),
+                        style: SettingsScreen._inter(
+                          size: 10,
+                          weight: FontWeight.w700,
+                          color: Colors.amber.shade800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _tr(lang, '완료 후에는 카드를 휴대폰에 태그하여 링크가 잘 열리는지 확인해보세요. 금속 표면 위에서는 인식이 안될 수 있습니다.', 'After writing, tap the card to your phone to verify. It may not work on metal surfaces.'),
+                    style: SettingsScreen._korean(
+                      size: 12,
+                      weight: FontWeight.w400,
+                      color: const Color(0xFF92400E),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            Container(
+              padding: const EdgeInsets.only(top: 20),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey.shade200)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.contact_support_outlined, size: 18, color: AppTheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        _tr(lang, '폰끼리 터치해서 보낼 순 없나요?', 'Can phones share via NFC touch?'),
+                        style: SettingsScreen._korean(
+                          size: 14,
+                          weight: FontWeight.w700,
+                          color: const Color(0xFF111827),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _tr(lang, '현재 스마트폰 보안 정책상 웹사이트가 실행 중인 폰이 직접 NFC 태그 역할(카드 역할)을 하는 것은 불가능합니다. (HCE 미지원)', 'Phones cannot act as NFC tags (card role) due to security policy. HCE not supported.'),
+                          style: SettingsScreen._korean(
+                            size: 12,
+                            weight: FontWeight.w400,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Icon(Icons.check_circle, size: 16, color: Colors.green.shade600),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _tr(lang, '대신 QR코드를 보여주세요.', 'Use QR code instead.'),
+                                style: SettingsScreen._korean(
+                                  size: 12,
+                                  weight: FontWeight.w700,
+                                  color: const Color(0xFF334155),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.check_circle, size: 16, color: Colors.blue.shade600),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _tr(lang, '공유하기(카카오톡/AirDrop)를 이용하세요.', 'Use Share (KakaoTalk/AirDrop).'),
+                                style: SettingsScreen._korean(
+                                  size: 12,
+                                  weight: FontWeight.w700,
+                                  color: const Color(0xFF334155),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF111827),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text(
+                  _tr(lang, '확인 완료', 'Got it'),
+                  style: SettingsScreen._korean(size: 14, weight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TabChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _TabChip({required this.label, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isSelected ? const Color(0xFF111827) : const Color(0xFFE2E8F0),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Center(
+            child: Text(
+              label,
+              style: SettingsScreen._korean(
+                size: 14,
+                weight: FontWeight.w700,
+                color: isSelected ? Colors.white : const Color(0xFF64748B),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuideStep extends StatelessWidget {
+  final int step;
+  final String title;
+  final String body;
+  final Widget? trailing;
+
+  const _GuideStep({
+    required this.step,
+    required this.title,
+    required this.body,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(
+                child: Text(
+                  '$step',
+                  style: SettingsScreen._korean(
+                    size: 14,
+                    weight: FontWeight.w700,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: SettingsScreen._korean(
+                      size: 15,
+                      weight: FontWeight.w700,
+                      color: const Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    body,
+                    style: SettingsScreen._korean(
+                      size: 13,
+                      weight: FontWeight.w400,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                  if (trailing != null) trailing!,
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
