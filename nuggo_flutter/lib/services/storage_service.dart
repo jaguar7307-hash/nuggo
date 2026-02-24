@@ -15,6 +15,7 @@ class StorageService {
   static const String _keyProfiles = 'tapcard_saved_profiles';
   static const String _keySettings = 'tapcard_settings';
   static const String _keyEditorDraft = 'tapcard_editor_draft';
+  static const String _keyHasBasicProfile = 'tapcard_has_basic_profile';
 
   /// getInstance() 한 번만 호출되도록 Future 캐시 (동시 접근 시 데드락 방지)
   Future<SharedPreferences>? _prefsFuture;
@@ -99,5 +100,15 @@ class StorageService {
   Future<void> clearTemporaryCache() async {
     final prefs = await _getPrefs();
     await prefs.remove(_keyEditorDraft);
+  }
+
+  Future<bool> getHasBasicProfile() async {
+    final prefs = await _getPrefs();
+    return prefs.getBool(_keyHasBasicProfile) ?? false;
+  }
+
+  Future<void> setHasBasicProfile(bool value) async {
+    final prefs = await _getPrefs();
+    await prefs.setBool(_keyHasBasicProfile, value);
   }
 }

@@ -36,6 +36,7 @@ class AppProvider with ChangeNotifier {
   String? _activeProfileId;
   String? _selectedProfileId;
   Profile? _lastDeletedProfile;
+  bool _hasBasicProfile = false;
 
   // Payment Modal
   bool _isPaymentModalOpen = false;
@@ -70,6 +71,7 @@ class AppProvider with ChangeNotifier {
 
   bool get isPaymentModalOpen => _isPaymentModalOpen;
   bool get canRestoreProfile => _lastDeletedProfile != null;
+  bool get hasBasicProfile => _hasBasicProfile;
   bool get scrollToBackgroundThemeOnNextBuild =>
       _scrollToBackgroundThemeOnNextBuild;
   bool get isPro => _currentUser?.membership == MembershipTier.pro;
@@ -102,9 +104,17 @@ class AppProvider with ChangeNotifier {
     final results = await Future.wait([
       _storage.getSettings(),
       _storage.getProfiles(),
+      _storage.getHasBasicProfile(),
     ]);
     _settings = results[0] as AppSettings;
     _savedProfiles = results[1] as List<Profile>;
+    _hasBasicProfile = results[2] as bool;
+
+    // 기존 사용자: 저장된 프로필이 있으면 기본 프로필 존재로 간주
+    if (!_hasBasicProfile && _savedProfiles.isNotEmpty) {
+      _hasBasicProfile = true;
+      unawaited(_storage.setHasBasicProfile(true));
+    }
 
     if (_savedProfiles.isEmpty) {
       _savedProfiles.add(
@@ -314,8 +324,21 @@ class AppProvider with ChangeNotifier {
     }).toList();
     if (changed) {
       await _storage.saveProfiles(_savedProfiles);
+      await _markBasicProfileExists();
       notifyListeners();
     }
+  }
+
+  Future<void> _markBasicProfileExists() async {
+    if (_hasBasicProfile) return;
+    _hasBasicProfile = true;
+    await _storage.setHasBasicProfile(true);
+  }
+
+  /// 프로필 편집 등에서 저장 시 기본 프로필 존재로 표시
+  Future<void> markBasicProfileExists() async {
+    await _markBasicProfileExists();
+    notifyListeners();
   }
 
   Future<void> saveProfile(Profile profile) async {
@@ -331,6 +354,7 @@ class AppProvider with ChangeNotifier {
 
     _activeProfileId = profile.id;
     await _storage.saveProfiles(_savedProfiles);
+    await _markBasicProfileExists();
     notifyListeners();
   }
 

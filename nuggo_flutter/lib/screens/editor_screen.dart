@@ -41,6 +41,7 @@ class _EditorScreenState extends State<EditorScreen> {
   bool _aiSloganLoading = false;
   bool _sloganKoreanMode = true;
   bool _formReady = false;
+  bool _basicProfileToastShown = false;
   final TextEditingController _sloganController = TextEditingController();
   final Map<String, TextEditingController> _formControllers = {};
   String? _cachedLanguage;
@@ -846,6 +847,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   value: data.fullName,
                   onChanged: (value) =>
                       provider.updateCardData(data.copyWith(fullName: value)),
+                  onTap: () => _maybeShowBasicProfileToast(context, provider, t),
                 ),
               ),
               const SizedBox(width: 16),
@@ -856,6 +858,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   value: data.jobTitle,
                   onChanged: (value) =>
                       provider.updateCardData(data.copyWith(jobTitle: value)),
+                  onTap: () => _maybeShowBasicProfileToast(context, provider, t),
                 ),
               ),
             ],
@@ -867,6 +870,7 @@ class _EditorScreenState extends State<EditorScreen> {
             value: data.companyName,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(companyName: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
 
           const SizedBox(height: 24),
@@ -889,6 +893,7 @@ class _EditorScreenState extends State<EditorScreen> {
             keyboardType: TextInputType.phone,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(phone: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -899,6 +904,7 @@ class _EditorScreenState extends State<EditorScreen> {
             keyboardType: TextInputType.phone,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(sms: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -909,6 +915,7 @@ class _EditorScreenState extends State<EditorScreen> {
             keyboardType: TextInputType.emailAddress,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(email: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
 
           const SizedBox(height: 24),
@@ -924,6 +931,7 @@ class _EditorScreenState extends State<EditorScreen> {
             keyboardType: TextInputType.url,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(website: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -933,6 +941,7 @@ class _EditorScreenState extends State<EditorScreen> {
             placeholder: t['placeholders.kakao']!,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(kakao: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -943,9 +952,16 @@ class _EditorScreenState extends State<EditorScreen> {
             keyboardType: TextInputType.url,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(shareLink: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 12),
-          _buildPortfolioInput(context, provider, data, t['placeholders.portfolio']!),
+          _buildPortfolioInput(
+            context,
+            provider,
+            data,
+            t['placeholders.portfolio']!,
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
+          ),
 
           const SizedBox(height: 24),
 
@@ -959,6 +975,7 @@ class _EditorScreenState extends State<EditorScreen> {
             placeholder: t['placeholders.address']!,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(address: value)),
+            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
           ),
           const SizedBox(height: 150),
         ],
@@ -1083,6 +1100,7 @@ class _EditorScreenState extends State<EditorScreen> {
               child: TextField(
                 controller: _sloganController,
                 inputFormatters: [_koreanOnlySloganFormatter],
+                onTap: () => _maybeShowBasicProfileToast(context, provider, t),
                 onChanged: (value) => provider.updateCardData(
                   provider.currentCardData.copyWith(slogan: value),
                 ),
@@ -1263,6 +1281,7 @@ class _EditorScreenState extends State<EditorScreen> {
     required String label,
     required String value,
     required Function(String) onChanged,
+    VoidCallback? onTap,
   }) {
     final controller = _getFormController(fieldKey, value);
     return Column(
@@ -1273,6 +1292,7 @@ class _EditorScreenState extends State<EditorScreen> {
         TextField(
           controller: controller,
           onChanged: (value) => onChanged(value),
+          onTap: onTap,
           textInputAction: TextInputAction.next,
           decoration: InputDecoration(
             border: const UnderlineInputBorder(),
@@ -1467,6 +1487,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     ..selection = TextSelection.collapsed(
                       offset: displayUrl.length,
                     ),
+                  onTap: () => _maybeShowBasicProfileToast(context, provider, t),
                   onChanged: (value) => provider.updateCardData(
                     data.copyWith(profileImage: value),
                   ),
@@ -1539,8 +1560,9 @@ class _EditorScreenState extends State<EditorScreen> {
     BuildContext context,
     AppProvider provider,
     CardData data,
-    String placeholder,
-  ) {
+    String placeholder, {
+    VoidCallback? onTap,
+  }) {
     final urlController = _getFormController('portfolioUrl', data.portfolioUrl ?? '');
     final hasFile = (data.portfolioFile ?? '').isNotEmpty;
     return Column(
@@ -1576,6 +1598,7 @@ class _EditorScreenState extends State<EditorScreen> {
             Expanded(
               child: TextField(
                 controller: urlController,
+                onTap: onTap,
                 onChanged: (v) => provider.updateCardData(data.copyWith(portfolioUrl: v)),
                 decoration: InputDecoration(
                   hintText: placeholder,
@@ -1635,6 +1658,7 @@ class _EditorScreenState extends State<EditorScreen> {
     required String placeholder,
     required Function(String) onChanged,
     TextInputType keyboardType = TextInputType.text,
+    VoidCallback? onTap,
   }) {
     final controller = _getFormController(fieldKey, value);
     return Container(
@@ -1652,6 +1676,7 @@ class _EditorScreenState extends State<EditorScreen> {
             child: TextField(
               controller: controller,
               onChanged: (value) => onChanged(value),
+              onTap: onTap,
               textInputAction: TextInputAction.next,
               keyboardType: keyboardType,
               decoration: InputDecoration(
@@ -1834,6 +1859,9 @@ class _EditorScreenState extends State<EditorScreen> {
         'placeholders.portfolio': '링크 입력 (예: www.example.com)',
         'placeholders.address': '주소 입력',
         'placeholders.hotlink': '또는 이미지 URL 붙여넣기...',
+        'basicProfileToastLine1': '입력 내용이 기본 프로필로 저장됩니다.',
+        'basicProfileToastLine2': '프로필 사진은 설정 > 개인 프로필에서 설정할 수 있습니다.',
+        'basicProfileToastAction': '설정',
       };
       return _cachedTexts;
     } else {
@@ -1879,8 +1907,44 @@ class _EditorScreenState extends State<EditorScreen> {
         'placeholders.portfolio': 'Enter link (e.g. www.example.com)',
         'placeholders.address': 'Physical Address',
         'placeholders.hotlink': 'Or paste image URL (Hotlink)...',
+        'basicProfileToastLine1': 'Your input will be saved as the basic profile.',
+        'basicProfileToastLine2': 'Profile photo can be set in Settings > Personal Profile.',
+        'basicProfileToastAction': 'Settings',
       };
       return _cachedTexts;
     }
+  }
+
+  void _maybeShowBasicProfileToast(
+    BuildContext context,
+    AppProvider provider,
+    Map<String, String> t,
+  ) {
+    if (provider.hasBasicProfile || _basicProfileToastShown) return;
+    _basicProfileToastShown = true;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(t['basicProfileToastLine1']!),
+            const SizedBox(height: 4),
+            Text(
+              t['basicProfileToastLine2']!,
+              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.9)),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: t['basicProfileToastAction']!,
+          onPressed: () {
+            provider.setActiveView(ViewType.settings);
+          },
+        ),
+      ),
+    );
   }
 }
