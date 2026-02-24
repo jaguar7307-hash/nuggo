@@ -171,14 +171,14 @@ class SettingsScreen extends StatelessWidget {
                                 ),
                                 _SwitchTile(
                                   icon: Icons.language_rounded,
-                                  title: _tr(lang, '다국어 (한국어/영어)', 'Language (KO/EN)'),
+                                  title: _tr(lang, '언어 (한국어/영어)', 'Language'),
                                   subtitle: settings.language == 'ko'
                                       ? _tr(lang, '현재: 한국어', 'Korean')
                                       : 'English',
                                   value: settings.language == 'en',
                                   activeColor: _accent,
                                   switchScale: 0.92,
-                                  titleSize: 14,
+                                  titleSize: 13,
                                   onChanged: (v) async {
                                     await _setAppLanguage(navContext, provider, v);
                                   },
@@ -1699,7 +1699,9 @@ class _SubscriptionSecurityScreen extends StatelessWidget {
                               ),
                             ),
                             subtitle: Text(
-                              _tr(lang, '앱 진입 시 잠금 확인', 'Require unlock on app entry'),
+                              _tr(lang, '앱 진입 시 잠금 확인', 'Unlock on entry'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: SettingsScreen._korean(
                                 size: 11,
                                 color: const Color(0xFF64748B),
