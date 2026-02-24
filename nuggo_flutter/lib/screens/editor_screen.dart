@@ -356,6 +356,7 @@ class _EditorScreenState extends State<EditorScreen> {
                         children: [
                           SizedBox(
                             width: cardW,
+                            height: kBusinessCardAspectHeight,
                             child: DigitalCard(
                               data: data,
                               isLarge: false,

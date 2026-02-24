@@ -86,6 +86,12 @@ class MyApp extends StatelessWidget {
       title: 'NUGGO',
       debugShowCheckedModeBanner: false,
       theme: darkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
+      builder: (context, child) {
+        return Container(
+          color: darkMode ? const Color(0xFF101822) : const Color(0xFFF8F9FA),
+          child: child,
+        );
+      },
       home: const MainScreen(),
     );
   }
