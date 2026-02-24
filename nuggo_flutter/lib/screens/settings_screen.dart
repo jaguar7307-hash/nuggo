@@ -1075,6 +1075,12 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
     });
   }
 
+  void _removeImage() {
+    setState(() {
+      _avatarDataUrl = null;
+    });
+  }
+
   ImageProvider<Object>? _avatarProvider() {
     final value = _avatarDataUrl?.trim() ?? '';
     if (value.isEmpty) return null;
@@ -1252,6 +1258,36 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                           ),
                         ),
                       ),
+                    ),
+                    if (avatar != null)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: InkWell(
+                          onTap: _removeImage,
+                          borderRadius: BorderRadius.circular(999),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x33000000),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
                     ),
                   ],
                 ),

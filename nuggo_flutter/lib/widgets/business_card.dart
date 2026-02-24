@@ -145,57 +145,63 @@ class BusinessCard extends StatelessWidget {
     required Color textColor,
     required bool hasProfileImage,
   }) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            hasProfileImage
-                ? Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 3,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 8,
-                        ),
-                      ],
-                      image: DecorationImage(
-                        image: data.profileImage!.startsWith('http')
-                            ? NetworkImage(data.profileImage!)
-                            : MemoryImage(
-                                Uri.parse(data.profileImage!).data!.contentAsBytes(),
-                              ) as ImageProvider,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      '"${data.slogan}"',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: textColor,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-          ],
+    final hasSlogan = data.slogan.trim().isNotEmpty;
+    if (hasProfileImage) {
+      return Align(
+        alignment: Alignment.topLeft,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 3,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 8,
+                ),
+              ],
+              image: DecorationImage(
+                image: data.profileImage!.startsWith('http')
+                    ? NetworkImage(data.profileImage!)
+                    : MemoryImage(
+                        Uri.parse(data.profileImage!).data!.contentAsBytes(),
+                      ) as ImageProvider,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
         ),
-      ),
-    );
+      );
+    }
+    if (hasSlogan) {
+      return Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              '"${data.slogan}"',
+              style: TextStyle(
+                fontSize: 16,
+                color: textColor,
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildIdentitySection({
