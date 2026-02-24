@@ -112,9 +112,11 @@ class AppProvider with ChangeNotifier {
     _hasBasicProfile = results[2] as bool;
 
     // 마이그레이션: 이전 기본값(Jane Doe 등)이면 새 빈 칸 기본값으로 교체
+    // 디버그 모드: 저장된 프로필과 무관하게 항상 빈 칸으로 (테스트용)
     bool migrated = false;
     _savedProfiles = _savedProfiles.map((p) {
-      if (AppConstants.isLegacyDefault(p.data)) {
+      final shouldReset = kDebugMode || AppConstants.isLegacyDefault(p.data);
+      if (shouldReset) {
         migrated = true;
         return Profile(
           id: p.id,
