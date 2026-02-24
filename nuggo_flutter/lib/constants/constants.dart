@@ -13,6 +13,12 @@ class AppConstants {
     '소개는 짧게, 인상은 깊게.',
   ];
 
+  /// 이전 기본값 여부 (마이그레이션용 - 저장된 프로필이 이 값이면 새 빈 칸으로 교체)
+  static bool isLegacyDefault(CardData d) =>
+      d.fullName == 'Jane Doe' &&
+      d.jobTitle == 'Creative Director' &&
+      d.companyName == 'The Studio Inc.';
+
   // Initial Card Data
   static final CardData initialCardData = CardData(
     slogan: "Your story begins with a single tap.",

@@ -111,6 +111,24 @@ class AppProvider with ChangeNotifier {
     _savedProfiles = results[1] as List<Profile>;
     _hasBasicProfile = results[2] as bool;
 
+    // 마이그레이션: 이전 기본값(Jane Doe 등)이면 새 빈 칸 기본값으로 교체
+    bool migrated = false;
+    _savedProfiles = _savedProfiles.map((p) {
+      if (AppConstants.isLegacyDefault(p.data)) {
+        migrated = true;
+        return Profile(
+          id: p.id,
+          name: p.name,
+          data: AppConstants.initialCardData.copyWith(
+            theme: p.data.theme,
+            font: p.data.font,
+          ),
+        );
+      }
+      return p;
+    }).toList();
+    if (migrated) unawaited(_storage.saveProfiles(_savedProfiles));
+
     // 기존 사용자: 저장된 프로필이 있으면 기본 프로필 존재로 간주
     if (!_hasBasicProfile && _savedProfiles.isNotEmpty) {
       _hasBasicProfile = true;
