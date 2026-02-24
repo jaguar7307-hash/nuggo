@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import '../models/user.dart';
 import '../models/profile.dart';
@@ -132,6 +133,11 @@ class AppProvider with ChangeNotifier {
       _cardsMap[first.data.theme] = first.data;
       _activeThemeUrl = first.data.theme;
       _activeProfileId = first.id;
+    }
+    // 디버그 모드: 앱 재실행 시 기본 프로필 초기화 (스낵바 테스트용)
+    if (kDebugMode) {
+      _hasBasicProfile = false;
+      unawaited(_storage.setHasBasicProfile(false));
     }
     notifyListeners();
     unawaited(_restoreSession());

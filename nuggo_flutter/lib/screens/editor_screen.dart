@@ -1937,6 +1937,8 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
           ],
         ),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
         duration: const Duration(seconds: 4),
         action: SnackBarAction(
           label: t['basicProfileToastAction']!,
