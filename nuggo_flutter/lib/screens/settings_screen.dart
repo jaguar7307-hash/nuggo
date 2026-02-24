@@ -279,22 +279,19 @@ class SettingsScreen extends StatelessWidget {
                         Positioned(
                           left: 24,
                           right: 24,
-                          bottom: 16,
+                          bottom: 0,
                           child: _BottomAuthCta(
                             isGuest: isGuest,
                             language: lang,
-                            onPrimaryTap: () => _handleBrowseExit(navContext, provider, isGuest),
-                            onLogoutTap: () async {
+                            onPrimaryTap: () async {
                               if (isGuest) {
                                 _showPlaceholder(
                                   navContext,
-                                  _tr(lang, '게스트 모드에서는 로그아웃할 계정이 없습니다.', 'No account to log out in guest mode.'),
+                                  _tr(lang, '로그인/회원가입 화면은 곧 연결됩니다.', 'Sign in / sign up is coming soon.'),
                                 );
                                 return;
                               }
-                              await provider.logout();
-                              if (!navContext.mounted) return;
-                              _showPlaceholder(navContext, _tr(lang, '로그아웃되었습니다.', 'Logged out.'));
+                              await _handleLogout(navContext, provider, lang);
                             },
                           ),
                         ),
@@ -309,22 +306,17 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  static Future<void> _handleBrowseExit(
+  static Future<void> _handleLogout(
     BuildContext context,
     AppProvider provider,
-    bool isGuest,
+    String lang,
   ) async {
-    final lang = provider.settings.language;
-    if (isGuest) {
-      _showPlaceholder(context, _tr(lang, '로그인/회원가입 화면은 곧 연결됩니다.', 'Sign in / sign up is coming soon.'));
-      return;
-    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
           title: Text(_tr(lang, '로그아웃', 'Log Out')),
-          content: Text(_tr(lang, '둘러보기를 종료하고 로그아웃하시겠어요?', 'Exit browsing and log out?')),
+          content: Text(_tr(lang, '로그아웃하시겠어요?', 'Log out?')),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
@@ -341,7 +333,7 @@ class SettingsScreen extends StatelessWidget {
     if (confirm != true) return;
     await provider.logout();
     if (!context.mounted) return;
-    _showToast(context, _tr(lang, '게스트 모드로 전환되었습니다.', 'Switched to guest mode.'));
+    _showToast(context, _tr(lang, '로그아웃되었습니다.', 'Logged out.'));
   }
 
   static void _showPlaceholder(BuildContext context, String message) {
@@ -1867,59 +1859,41 @@ class _BottomAuthCta extends StatelessWidget {
   final bool isGuest;
   final String language;
   final VoidCallback onPrimaryTap;
-  final VoidCallback onLogoutTap;
 
   const _BottomAuthCta({
     required this.isGuest,
     required this.language,
     required this.onPrimaryTap,
-    required this.onLogoutTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
         color: const Color(0xE60A0A0A),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF1C1C1E)),
       ),
-      child: Column(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: onPrimaryTap,
-              style: FilledButton.styleFrom(
-                backgroundColor: SettingsScreen._accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                language == 'en'
-                    ? (isGuest ? 'Sign In / Sign Up' : 'Exit Browsing')
-                    : (isGuest ? '로그인 / 회원가입' : '둘러보기 종료'),
-                style: SettingsScreen._korean(size: 14, weight: FontWeight.w700),
-              ),
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: onPrimaryTap,
+          style: FilledButton.styleFrom(
+            backgroundColor: SettingsScreen._accent,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: onLogoutTap,
-            child: Text(
-              language == 'en' ? 'Log Out' : '로그아웃',
-              style: SettingsScreen._korean(
-                size: 13,
-                weight: FontWeight.w500,
-                color: const Color(0xFF71717A),
-              ),
-            ),
+          child: Text(
+            language == 'en'
+                ? (isGuest ? 'Sign In / Sign Up' : 'Log Out')
+                : (isGuest ? '로그인 / 회원가입' : '로그아웃'),
+            style: SettingsScreen._korean(size: 14, weight: FontWeight.w700),
           ),
-        ],
+        ),
       ),
     );
   }
