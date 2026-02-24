@@ -152,7 +152,7 @@ class SettingsScreen extends StatelessWidget {
                                 _SwitchTile(
                                   icon: Icons.notifications_none_rounded,
                                   title: _tr(lang, '알림설정', 'Notifications'),
-                                  subtitle: _tr(lang, '푸시 알림 및 소리', 'Push notifications and sound'),
+                                  subtitle: _tr(lang, '푸시 알림 및 소리', 'Push & sound'),
                                   value: settings.notifications,
                                   activeColor: _accent,
                                   switchScale: 0.86,
@@ -163,7 +163,7 @@ class SettingsScreen extends StatelessWidget {
                                 _MenuTile(
                                   icon: Icons.apps_rounded,
                                   title: _tr(lang, '앱 설정', 'App Settings'),
-                                  subtitle: _tr(lang, '앱 전반 동작 설정', 'General app behavior'),
+                                  subtitle: _tr(lang, '앱 전반 동작 설정', 'App behavior'),
                                   onTap: () => _showPlaceholder(
                                     navContext,
                                     _tr(lang, '앱 설정 세부 화면을 준비 중입니다.', 'Detailed app settings are coming soon.'),
@@ -171,10 +171,10 @@ class SettingsScreen extends StatelessWidget {
                                 ),
                                 _SwitchTile(
                                   icon: Icons.language_rounded,
-                                  title: _tr(lang, '다국어 선택 (한국어/영어)', 'Language (Korean/English)'),
+                                  title: _tr(lang, '다국어 선택 (한국어/영어)', 'Language (KO/EN)'),
                                   subtitle: settings.language == 'ko'
-                                      ? _tr(lang, '현재: 한국어', 'Current: Korean')
-                                      : 'Current: English',
+                                      ? _tr(lang, '현재: 한국어', 'Korean')
+                                      : 'English',
                                   value: settings.language == 'en',
                                   activeColor: _accent,
                                   switchScale: 0.92,
@@ -192,7 +192,7 @@ class SettingsScreen extends StatelessWidget {
                                 _MenuTile(
                                   icon: Icons.nfc_rounded,
                                   title: _tr(lang, 'NFC 카드 만들기 가이드', 'NFC Card Guide'),
-                                  subtitle: _tr(lang, '스마트하게 탭하는 방법', 'How to use NFC tap'),
+                                  subtitle: _tr(lang, '스마트하게 탭하는 방법', 'NFC tap guide'),
                                   onTap: () => _showPlaceholder(
                                     navContext,
                                     _tr(lang, '가이드 본문은 추후 입력해 주세요.', 'Guide content will be added soon.'),
@@ -237,7 +237,7 @@ class SettingsScreen extends StatelessWidget {
                                 _MenuTile(
                                   icon: Icons.backup_rounded,
                                   title: _tr(lang, '데이터 백업', 'Data Backup'),
-                                  subtitle: _tr(lang, '데이터를 안전하게 보관', 'Keep data safely'),
+                                  subtitle: _tr(lang, '데이터를 안전하게 보관', 'Backup data'),
                                   onTap: () => _showPlaceholder(
                                     navContext,
                                     _tr(lang, '데이터 백업 기능은 준비 중입니다.', 'Data backup is coming soon.'),
@@ -246,7 +246,7 @@ class SettingsScreen extends StatelessWidget {
                                 _MenuTile(
                                   icon: Icons.cleaning_services_rounded,
                                   title: _tr(lang, '캐시삭제', 'Clear Cache'),
-                                  subtitle: _tr(lang, '임시 데이터를 정리', 'Clean temporary data'),
+                                  subtitle: _tr(lang, '임시 데이터를 정리', 'Clear temp'),
                                   onTap: () => _clearImageCache(navContext, provider),
                                 ),
                               ],
@@ -783,6 +783,8 @@ class _MenuTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: SettingsScreen._korean(
                           size: 11,
                           weight: FontWeight.w400,
@@ -852,6 +854,8 @@ class _SwitchTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: SettingsScreen._korean(
                     size: 11,
                     weight: FontWeight.w400,
