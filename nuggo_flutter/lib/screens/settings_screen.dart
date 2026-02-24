@@ -900,6 +900,7 @@ class _ProfileEditScreen extends StatefulWidget {
 
 class _ProfileEditScreenState extends State<_ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   final TextEditingController _sloganController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _jobTitleController = TextEditingController();
@@ -951,6 +952,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _sloganControllerOrNull?.dispose();
     _nameControllerOrNull?.dispose();
     _jobTitleControllerOrNull?.dispose();
@@ -1142,9 +1144,16 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      body: SingleChildScrollView(
+          controller: _scrollController,
+          physics: const ClampingScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.fromLTRB(
+            20,
+            16,
+            20,
+            28 + MediaQuery.of(context).viewInsets.bottom,
+          ),
           child: Form(
             key: _formKey,
             child: Column(
@@ -1352,7 +1361,6 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
             ),
           ),
         ),
-      ),
     );
   }
 
