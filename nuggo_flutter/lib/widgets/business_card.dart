@@ -8,12 +8,8 @@ const double kBusinessCardAspectHeight = 388.08;
 const double kBusinessCardAspectRatio =
     kBusinessCardAspectWidth / kBusinessCardAspectHeight;
 
-/// 콘텐츠 디자인 크기 (FittedBox로 fit하여 overflow 방지)
-const double _kDesignWidth = 194.55;
-const double _kDesignHeight = 400.0;
-
 /// 두 페이지(내 명함·에디터)에서 동일하게 사용하는 공통 명함 위젯.
-/// Expanded + FittedBox로 공간 분배 후 스케일하여 overflow 완전 방지.
+/// SizedBox.expand()로 부모 크기를 100% 사용. 고정 크기/AspectRatio/FittedBox 제거.
 class BusinessCard extends StatelessWidget {
   final CardData data;
   final VoidCallback? onAddressClick;
@@ -52,13 +48,13 @@ class BusinessCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textColor = _isLightBackground ? Colors.black87 : Colors.white;
-    final accentColor =
-        _isLightBackground ? AppTheme.primary : Colors.white.withValues(alpha: 0.8);
+    final accentColor = _isLightBackground
+        ? AppTheme.primary
+        : Colors.white.withValues(alpha: 0.8);
     final hasProfileImage =
         data.profileImage != null && data.profileImage!.isNotEmpty;
 
-    return AspectRatio(
-      aspectRatio: kBusinessCardAspectRatio,
+    return SizedBox.expand(
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -96,43 +92,23 @@ class BusinessCard extends StatelessWidget {
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: Column(
-                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      alignment: Alignment.center,
-                      child: SizedBox(
-                        width: _kDesignWidth,
-                        height: _kDesignHeight,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.max,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Flexible(
-                              fit: FlexFit.loose,
-                              child: _buildTopSection(
-                                context,
-                                textColor: textColor,
-                                hasProfileImage: hasProfileImage,
-                              ),
-                            ),
-                            _buildIdentitySection(
-                              textColor: textColor,
-                              accentColor: accentColor,
-                            ),
-                            _buildBottomSection(
-                              context,
-                              textColor: textColor,
-                              accentColor: accentColor,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  _buildTopSection(
+                    context,
+                    textColor: textColor,
+                    hasProfileImage: hasProfileImage,
+                  ),
+                  _buildIdentitySection(
+                    textColor: textColor,
+                    accentColor: accentColor,
+                  ),
+                  _buildBottomSection(
+                    context,
+                    textColor: textColor,
+                    accentColor: accentColor,
                   ),
                 ],
               ),
@@ -156,34 +132,48 @@ class BusinessCard extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (hasProfileImage)
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 6,
+            hasProfileImage
+                ? Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        width: 3,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                        ),
+                      ],
+                      image: DecorationImage(
+                        image: data.profileImage!.startsWith('http')
+                            ? NetworkImage(data.profileImage!)
+                            : MemoryImage(
+                                Uri.parse(data.profileImage!).data!.contentAsBytes(),
+                              ) as ImageProvider,
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                  ],
-                  image: DecorationImage(
-                    image: data.profileImage!.startsWith('http')
-                        ? NetworkImage(data.profileImage!)
-                        : MemoryImage(
-                            Uri.parse(data.profileImage!).data!.contentAsBytes(),
-                          ) as ImageProvider,
-                    fit: BoxFit.cover,
+                  )
+                : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      '"${data.slogan}"',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: textColor,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ),
-            if (hasProfileImage && hasSlogan) const SizedBox(height: 4),
-            if (hasSlogan)
+            if (hasProfileImage && hasSlogan) ...[
+              const SizedBox(height: 4),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Text(
@@ -198,6 +188,7 @@ class BusinessCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+            ],
           ],
         ),
       ),
@@ -355,7 +346,10 @@ class BusinessCard extends StatelessWidget {
               GestureDetector(
                 onTap: onAddressClick,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: isLight
                         ? Colors.white.withValues(alpha: 0.4)
@@ -375,7 +369,7 @@ class BusinessCard extends StatelessWidget {
                         color: textColor.withValues(alpha: 0.9),
                       ),
                       const SizedBox(width: 4),
-                      Flexible(
+                      Expanded(
                         child: Text(
                           data.address.toUpperCase(),
                           style: TextStyle(

@@ -1365,7 +1365,6 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
   final TextEditingController _kakaoController = TextEditingController();
   final TextEditingController _websiteController = TextEditingController();
   final TextEditingController _portfolioController = TextEditingController();
-  final TextEditingController _linkedinController = TextEditingController();
   final TextEditingController _shareLinkController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
@@ -1398,7 +1397,6 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
     _portfolioController.text = data.portfolioUrl ?? '';
     _portfolioFile = data.portfolioFile;
     _portfolioFileName = data.portfolioFileName;
-    _linkedinController.text = data.linkedin;
     _shareLinkController.text = data.shareLink;
     _addressController.text = data.address;
     _avatarDataUrl = data.profileImage ?? widget.initialUser.avatarUrl;
@@ -1417,7 +1415,6 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
     _kakaoControllerOrNull?.dispose();
     _websiteControllerOrNull?.dispose();
     _portfolioControllerOrNull?.dispose();
-    _linkedinControllerOrNull?.dispose();
     _shareLinkControllerOrNull?.dispose();
     _addressControllerOrNull?.dispose();
     super.dispose();
@@ -1434,7 +1431,6 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
   TextEditingController? get _kakaoControllerOrNull => _kakaoController;
   TextEditingController? get _websiteControllerOrNull => _websiteController;
   TextEditingController? get _portfolioControllerOrNull => _portfolioController;
-  TextEditingController? get _linkedinControllerOrNull => _linkedinController;
   TextEditingController? get _shareLinkControllerOrNull => _shareLinkController;
   TextEditingController? get _addressControllerOrNull => _addressController;
 
@@ -1468,10 +1464,15 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
     String mime = 'application/octet-stream';
     if (ext == 'pdf') {
       mime = 'application/pdf';
-    } else if (ext == 'doc') mime = 'application/msword';
-    else if (ext == 'docx') mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    else if (ext == 'jpg' || ext == 'jpeg') mime = 'image/jpeg';
-    else if (ext == 'png') mime = 'image/png';
+    } else if (ext == 'doc') {
+      mime = 'application/msword';
+    } else if (ext == 'docx') {
+      mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    } else if (ext == 'jpg' || ext == 'jpeg') {
+      mime = 'image/jpeg';
+    } else if (ext == 'png') {
+      mime = 'image/png';
+    }
     setState(() {
       _portfolioFile = 'data:$mime;base64,${base64Encode(file.bytes!)}';
       _portfolioFileName = file.name;
@@ -1535,7 +1536,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
             : _portfolioController.text.trim(),
         portfolioFile: _portfolioFile ?? '',
         portfolioFileName: _portfolioFileName ?? '',
-        linkedin: _linkedinController.text.trim(),
+        linkedin: '',
         shareLink: _shareLinkController.text.trim(),
         address: _addressController.text.trim(),
         profileImage: _avatarDataUrl,
@@ -1604,20 +1605,19 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-          controller: _scrollController,
-          physics: const ClampingScrollPhysics(),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            28 + MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -1839,9 +1839,12 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
     );
   }

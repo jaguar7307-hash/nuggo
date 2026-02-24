@@ -17,7 +17,7 @@ class AppSettings {
   String language; // 'ko' or 'en'
 
   AppSettings({
-    this.darkMode = false,
+    this.darkMode = true,
     this.notifications = true,
     this.marketing = true,
     this.biometrics = false,

@@ -7,6 +7,7 @@ import '../models/card_data.dart';
 import '../models/profile.dart';
 import '../providers/app_provider.dart';
 import '../widgets/digital_card.dart';
+import '../widgets/business_card.dart' show kBusinessCardAspectRatio;
 
 /// 내 명함 페이지 (My Card) - 첨부 디자인/HTML 기준
 class ProfileScreen extends StatefulWidget {
@@ -292,7 +293,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(32),
-        child: DigitalCard(data: data, isLarge: false),
+        child: AspectRatio(
+          aspectRatio: kBusinessCardAspectRatio,
+          child: DigitalCard(data: data, isLarge: false),
+        ),
       ),
     );
   }
