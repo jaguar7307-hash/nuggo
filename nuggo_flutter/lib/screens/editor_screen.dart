@@ -634,6 +634,14 @@ class _EditorScreenState extends State<EditorScreen> {
 
   static const Color _profileActionRed = Color(0xFFE57373);
 
+  static const List<String> _jobTitleSuggestions = [
+    '대표이사', '대표', 'CEO', 'COO', 'CTO', 'CFO', 'CMO',
+    '부사장', '전무이사', '전무', '상무이사', '상무',
+    '이사', '본부장', '실장', '팀장',
+    '부장', '차장', '과장', '대리', '주임', '사원', '인턴',
+    '프리랜서', '1인 기업',
+  ];
+
   Widget _buildProfilesSection(
     BuildContext context,
     AppProvider provider,
@@ -852,14 +860,7 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildTextField(
-                  fieldKey: 'jobTitle',
-                  label: t['jobTitle']!,
-                  value: data.jobTitle,
-                  onChanged: (value) =>
-                      provider.updateCardData(data.copyWith(jobTitle: value)),
-                  onTap: () => _maybeShowBasicProfileToast(context, provider, t),
-                ),
+                child: _buildJobTitleField(context, provider, data, t),
               ),
             ],
           ),
@@ -1276,6 +1277,133 @@ class _EditorScreenState extends State<EditorScreen> {
     )];
   }
 
+  Widget _buildJobTitleField(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+    Map<String, String> t,
+  ) {
+    final controller = _getFormController('jobTitle', data.jobTitle);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(t['jobTitle']!.toUpperCase(), style: _inputLabelStyle),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          onChanged: (value) =>
+              provider.updateCardData(data.copyWith(jobTitle: value)),
+          onTap: () => _maybeShowBasicProfileToast(context, provider, t),
+          textInputAction: TextInputAction.next,
+          enableInteractiveSelection: true,
+          decoration: InputDecoration(
+            border: const UnderlineInputBorder(),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.grey.shade600),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: AppTheme.primary, width: 1.5),
+            ),
+            isDense: true,
+            filled: false,
+            suffixIcon: GestureDetector(
+              onTap: () => _showJobTitlePicker(context, controller, provider, data, t),
+              child: Icon(Icons.expand_more_rounded, size: 20, color: Colors.grey.shade400),
+            ),
+          ),
+          style: _inputTextStyle,
+        ),
+      ],
+    );
+  }
+
+  void _showJobTitlePicker(
+    BuildContext context,
+    TextEditingController controller,
+    AppProvider provider,
+    CardData data,
+    Map<String, String> t,
+  ) {
+    FocusScope.of(context).unfocus();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                t['jobTitlePickerTitle'] ?? '직함 / 직책 선택',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Divider(color: Colors.grey.shade200, height: 1),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.5,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _jobTitleSuggestions.length,
+                  separatorBuilder: (_, __) =>
+                      Divider(color: Colors.grey.shade100, height: 1),
+                  itemBuilder: (_, index) {
+                    final title = _jobTitleSuggestions[index];
+                    final isSelected = controller.text == title;
+                    return ListTile(
+                      title: Text(
+                        title,
+                        style: GoogleFonts.notoSansKr(
+                          fontSize: 15,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: isSelected
+                              ? AppTheme.primary
+                              : Colors.black87,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? Icon(Icons.check, color: AppTheme.primary, size: 18)
+                          : null,
+                      onTap: () {
+                        controller.text = title;
+                        provider.updateCardData(
+                          data.copyWith(jobTitle: title),
+                        );
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildTextField({
     required String fieldKey,
     required String label,
@@ -1294,6 +1422,7 @@ class _EditorScreenState extends State<EditorScreen> {
           onChanged: (value) => onChanged(value),
           onTap: onTap,
           textInputAction: TextInputAction.next,
+          enableInteractiveSelection: true,
           decoration: InputDecoration(
             border: const UnderlineInputBorder(),
             enabledBorder: UnderlineInputBorder(
@@ -1679,6 +1808,7 @@ class _EditorScreenState extends State<EditorScreen> {
               onTap: onTap,
               textInputAction: TextInputAction.next,
               keyboardType: keyboardType,
+              enableInteractiveSelection: true,
               decoration: InputDecoration(
                 hintText: placeholder,
                 hintStyle: _inputHintStyle,
@@ -1862,6 +1992,7 @@ class _EditorScreenState extends State<EditorScreen> {
         'basicProfileToastLine1': '입력 내용이 기본 프로필로 저장됩니다.',
         'basicProfileToastLine2': '프로필 사진은 설정 > 개인 프로필에서 설정할 수 있습니다.',
         'basicProfileToastAction': '설정',
+        'jobTitlePickerTitle': '직함 / 직책 선택',
       };
       return _cachedTexts;
     } else {
@@ -1910,6 +2041,7 @@ class _EditorScreenState extends State<EditorScreen> {
         'basicProfileToastLine1': 'Your input will be saved as the basic profile.',
         'basicProfileToastLine2': 'Profile photo can be set in Settings > Personal Profile.',
         'basicProfileToastAction': 'Settings',
+        'jobTitlePickerTitle': 'Select Job Title',
       };
       return _cachedTexts;
     }
