@@ -209,10 +209,7 @@ class SettingsScreen extends StatelessWidget {
                                   icon: Icons.description_outlined,
                                   title: _tr(lang, '이용약관', 'Terms of Service'),
                                   subtitle: '',
-                                  onTap: () => _showPlaceholder(
-                                    navContext,
-                                    _tr(lang, '이용약관 내용은 추후 입력해 주세요.', 'Terms content will be added soon.'),
-                                  ),
+                                  onTap: () => _openTermsOfService(navContext, lang),
                                   isExternal: true,
                                 ),
                                 _MenuTile(
@@ -374,6 +371,60 @@ class SettingsScreen extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                       child: SelectableText(
                         AppConstants.privacyPolicy,
+                        style: _korean(size: 13, height: 1.6, color: const Color(0xFFD4D4D8)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  static Future<void> _openTermsOfService(BuildContext context, String lang) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF111113),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.9,
+          minChildSize: 0.5,
+          maxChildSize: 1,
+          expand: false,
+          builder: (_, scrollController) {
+            return SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 4,
+                    margin: const EdgeInsets.only(top: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3F3F46),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    child: Text(
+                      _tr(lang, '이용약관', 'Terms of Service'),
+                      style: _korean(size: 18, weight: FontWeight.w700),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      child: SelectableText(
+                        AppConstants.termsOfService,
                         style: _korean(size: 13, height: 1.6, color: const Color(0xFFD4D4D8)),
                       ),
                     ),
