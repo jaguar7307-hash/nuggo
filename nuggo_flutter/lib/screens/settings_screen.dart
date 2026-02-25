@@ -1846,6 +1846,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
             );
           },
         ),
+      ),
     );
   }
 
