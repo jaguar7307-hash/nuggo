@@ -797,7 +797,10 @@ class _WalletScreenState extends State<WalletScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black54,
       builder: (_) => _CardDetailSheet(
         card: card,
         onReminderTap: () {
@@ -814,6 +817,17 @@ class _WalletScreenState extends State<WalletScreen> {
         },
         onMemoSaved: (newMemo) {
           setState(() => card.memo = newMemo);
+        },
+        onDelete: () {
+          Navigator.pop(context);
+          setState(() => _cards.remove(card));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${card.name}님 명함이 삭제되었습니다.'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.red.shade600,
+            ),
+          );
         },
       ),
     );
@@ -994,6 +1008,7 @@ class _CardDetailSheet extends StatefulWidget {
   final VoidCallback onNearbyTap;
   final VoidCallback onSyncTap;
   final ValueChanged<String> onMemoSaved;
+  final VoidCallback onDelete;
 
   const _CardDetailSheet({
     required this.card,
@@ -1001,6 +1016,7 @@ class _CardDetailSheet extends StatefulWidget {
     required this.onNearbyTap,
     required this.onSyncTap,
     required this.onMemoSaved,
+    required this.onDelete,
   });
 
   @override
@@ -1032,34 +1048,56 @@ class _CardDetailSheetState extends State<_CardDetailSheet> {
     final typeColor =
         card.type == WalletCardType.digital ? _digitalPurple : _scanGreen;
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          // 드래그 핸들
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(2),
-            ),
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.25,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          const SizedBox(height: 8),
-          // 페이지 인디케이터 (앞면/뒷면)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
             children: [
-              _pageIndicator(0, '앞면', isDark),
-              const SizedBox(width: 8),
-              _pageIndicator(1, '뒷면(메모)', isDark),
-            ],
-          ),
+              // 드래그 핸들 (아래로 스와이프하여 내리기)
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // 페이지 인디케이터 + 삭제 버튼
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _pageIndicator(0, '앞면', isDark),
+                    const SizedBox(width: 8),
+                    _pageIndicator(1, '뒷면(메모)', isDark),
+                    const Spacer(),
+                    // 삭제 버튼
+                    IconButton(
+                      onPressed: () => _showDeleteConfirm(context),
+                      icon: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 22,
+                        color: Colors.red.shade400,
+                      ),
+                      tooltip: '명함 삭제',
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.red.withValues(alpha: 0.1),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           const SizedBox(height: 8),
           // PageView
           Expanded(
@@ -1403,6 +1441,60 @@ class _CardDetailSheetState extends State<_CardDetailSheet> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+      },
+    );
+  }
+
+  void _showDeleteConfirm(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.delete_outline, color: Colors.red.shade400, size: 22),
+            const SizedBox(width: 8),
+            const Text('명함 삭제', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          '${widget.card.name}님 명함을 삭제할까요?\n삭제된 명함은 복구할 수 없습니다.',
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              '취소',
+              style: TextStyle(
+                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              widget.onDelete();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('삭제', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
