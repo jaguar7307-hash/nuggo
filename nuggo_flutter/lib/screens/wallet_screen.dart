@@ -1114,20 +1114,6 @@ class _CardDetailSheetState extends State<_CardDetailSheet> {
                     const SizedBox(width: 8),
                     _pageIndicator(1, '뒷면(메모)', isDark),
                     const Spacer(),
-                    // 되돌기 버튼
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(
-                        Icons.undo_rounded,
-                        size: 22,
-                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                      ),
-                      tooltip: '되돌기',
-                      style: IconButton.styleFrom(
-                        backgroundColor: (isDark ? Colors.grey.shade800 : Colors.grey.shade200),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
                     // 삭제 버튼
                     IconButton(
                       onPressed: () => _showDeleteConfirm(context),
