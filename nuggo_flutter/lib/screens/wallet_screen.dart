@@ -245,33 +245,44 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Stack(
-      children: [
-        Column(
-          children: [
-            _buildSearchBar(isDark),
-            _buildFilterChips(isDark),
-            _buildStatsRow(isDark),
-            Expanded(
-              child: _filteredCards.isEmpty
-                  ? _buildEmptyState(isDark)
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                      itemCount: _filteredCards.length,
-                      itemBuilder: (_, i) =>
-                          _buildCardTile(_filteredCards[i], isDark),
-                    ),
-            ),
-          ],
-        ),
-        // ── 스캔 FAB (최하단 중앙) ─────────────────
-        Positioned(
-          bottom: 16,
-          left: 0,
-          right: 0,
-          child: Center(child: _buildScanFab()),
-        ),
-      ],
+    return GestureDetector(
+      // 배경 탭 시 키보드 내리기
+      onTap: () => FocusScope.of(context).unfocus(),
+      // 아래로 스와이프 시 키보드 내리기
+      onVerticalDragEnd: (details) {
+        if (details.primaryVelocity != null && details.primaryVelocity! > 200) {
+          FocusScope.of(context).unfocus();
+        }
+      },
+      behavior: HitTestBehavior.translucent,
+      child: Stack(
+        children: [
+          Column(
+            children: [
+              _buildSearchBar(isDark),
+              _buildFilterChips(isDark),
+              _buildStatsRow(isDark),
+              Expanded(
+                child: _filteredCards.isEmpty
+                    ? _buildEmptyState(isDark)
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                        itemCount: _filteredCards.length,
+                        itemBuilder: (_, i) =>
+                            _buildCardTile(_filteredCards[i], isDark),
+                      ),
+              ),
+            ],
+          ),
+          // ── 스캔 FAB (최하단 중앙) ─────────────────
+          Positioned(
+            bottom: 16,
+            left: 0,
+            right: 0,
+            child: Center(child: _buildScanFab()),
+          ),
+        ],
+      ),
     );
   }
 
