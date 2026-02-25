@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,24 +30,29 @@ void _showQrDialog(BuildContext context, AppProvider provider) {
     context: context,
     builder: (ctx) => AlertDialog(
       title: const Text('명함 QR 코드'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          QrImageView(
-            data: url,
-            version: QrVersions.auto,
-            size: 200,
-            backgroundColor: Colors.white,
+      content: SizedBox(
+        width: 280,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              QrImageView(
+                data: url,
+                version: QrVersions.auto,
+                size: 200,
+                backgroundColor: Colors.white,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                url,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            url,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
       actions: [
         TextButton(
@@ -58,18 +64,71 @@ void _showQrDialog(BuildContext context, AppProvider provider) {
   );
 }
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await SharedPreferences.getInstance();
-  debugPaintBaselinesEnabled = false;
-  debugPaintSizeEnabled = false;
-  GoogleFonts.config.allowRuntimeFetching = true;
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppProvider()..initialize(),
-      child: const MyApp(),
-    ),
-  );
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await SharedPreferences.getInstance();
+    debugPaintBaselinesEnabled = false;
+    debugPaintSizeEnabled = false;
+    GoogleFonts.config.allowRuntimeFetching = true;
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      debugPrint('FlutterError: ${details.exception}');
+    };
+    runApp(
+      ChangeNotifierProvider(
+        create: (_) => AppProvider()..initialize(),
+        child: const MyApp(),
+      ),
+    );
+  }, (error, stack) {
+    debugPrint('Zone error: $error\n$stack');
+  });
+}
+
+/// 첫 프레임이 폰에서 그려지는지 확인용 — 밝은 배경이면 Flutter 동작, 검정이면 엔진/설정 이슈
+class _FirstFrameGate extends StatefulWidget {
+  final Widget child;
+
+  const _FirstFrameGate({required this.child});
+
+  @override
+  State<_FirstFrameGate> createState() => _FirstFrameGateState();
+}
+
+class _FirstFrameGateState extends State<_FirstFrameGate> {
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _ready = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: const Color(0xFFF5F5F7),
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('NUGGO', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+                const SizedBox(height: 16),
+                Text('로딩 중...', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return widget.child;
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -82,17 +141,19 @@ class MyApp extends StatelessWidget {
     final darkMode = context.select<AppProvider, bool>(
       (p) => p.settings.darkMode,
     );
-    return MaterialApp(
-      title: 'NUGGO',
-      debugShowCheckedModeBanner: false,
-      theme: darkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
-      builder: (context, child) {
-        return Container(
-          color: darkMode ? const Color(0xFF101822) : const Color(0xFFF8F9FA),
-          child: child,
-        );
-      },
-      home: const MainScreen(),
+    return _FirstFrameGate(
+      child: MaterialApp(
+        title: 'NUGGO',
+        debugShowCheckedModeBanner: false,
+        theme: darkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
+        builder: (context, child) {
+          return Container(
+            color: darkMode ? const Color(0xFF101822) : const Color(0xFFF8F9FA),
+            child: child,
+          );
+        },
+        home: const MainScreen(),
+      ),
     );
   }
 }

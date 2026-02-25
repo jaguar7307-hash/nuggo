@@ -8,6 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/app_provider.dart';
 import '../widgets/digital_card.dart';
 import '../models/card_data.dart';
@@ -432,7 +434,7 @@ class _EditorScreenState extends State<EditorScreen> {
                           iconColor: AppTheme.primary,
                           shapeRadius: 12,
                           size: 44,
-                          onTap: () {},
+                          onTap: () => _shareCardFromEditor(context, provider),
                         ),
                         const SizedBox(height: 8),
                         _actionButton(
@@ -441,7 +443,7 @@ class _EditorScreenState extends State<EditorScreen> {
                           iconColor: const Color(0xFFCBD5E1),
                           shapeRadius: 12,
                           size: 44,
-                          onTap: () {},
+                          onTap: () => _showQrDialogFromEditor(context, provider),
                         ),
                       ],
                     ),
@@ -493,6 +495,73 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
           child: Icon(icon, color: iconColor ?? Colors.white, size: iconSize),
         ),
+      ),
+    );
+  }
+
+  void _shareCardFromEditor(BuildContext context, AppProvider provider) {
+    final data = provider.selectedProfile?.data ?? provider.currentCardData;
+    String url = data.shareLink.trim();
+    if (url.isEmpty) url = 'https://nuggo.me';
+    if (!url.startsWith('http')) url = 'https://$url';
+    final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
+    SharePlus.instance.share(ShareParams(text: url, subject: '명함: $name'));
+  }
+
+  void _showQrDialogFromEditor(BuildContext context, AppProvider provider) {
+    final data = provider.selectedProfile?.data ?? provider.currentCardData;
+    String url = data.shareLink.trim();
+    if (url.isEmpty) url = 'https://nuggo.me';
+    if (!url.startsWith('http')) url = 'https://$url';
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('명함 QR 코드'),
+        content: SizedBox(
+          width: 300,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: QrImageView(
+                    data: url,
+                    version: QrVersions.auto,
+                    size: 200,
+                    backgroundColor: Colors.white,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Color(0xFF1A237E),
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Color(0xFF1A237E),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  url,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('닫기'),
+          ),
+        ],
       ),
     );
   }

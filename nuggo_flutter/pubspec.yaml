@@ -47,6 +47,11 @@ dependencies:
   
   # QR Code
   qr_flutter: ^4.1.0
+
+  # Charts & PDF
+  fl_chart: ^0.69.0
+  pdf: ^3.11.1
+  printing: ^5.13.2
   
   # NFC
   nfc_manager: ^4.1.1

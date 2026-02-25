@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import '../models/card_data.dart';
@@ -45,6 +46,63 @@ class _PreviewScreenState extends State<PreviewScreen> {
     return Color(int.parse('FF$h', radix: 16));
   }
 
+  void _showQrDialog(BuildContext context, CardData data) {
+    String url = data.shareLink.trim();
+    if (url.isEmpty) url = 'https://nuggo.me';
+    if (!url.startsWith('http')) url = 'https://$url';
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('명함 QR 코드'),
+        content: SizedBox(
+          width: 300,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: QrImageView(
+                    data: url,
+                    version: QrVersions.auto,
+                    size: 200,
+                    backgroundColor: Colors.white,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Color(0xFF1A237E),
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Color(0xFF1A237E),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  url,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('닫기'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleAction(String type, String value, CardData data) async {
     if (value.isEmpty && type != 'share') return;
     if (type == 'share') {
@@ -81,8 +139,16 @@ class _PreviewScreenState extends State<PreviewScreen> {
       default:
         uri = null;
     }
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (uri != null) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('링크를 열 수 없습니다.')),
+          );
+        }
+      }
     }
   }
 
@@ -403,26 +469,83 @@ class _PreviewScreenState extends State<PreviewScreen> {
                   Positioned(
                     top: 14,
                     right: 20,
-                    child: Material(
-                      color: isLight
-                          ? Colors.black.withValues(alpha: 0.1)
-                          : Colors.white.withValues(alpha: 0.12),
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        onTap: () => provider.setActiveView(
-                          provider.previousView ?? ViewType.myCards,
-                        ),
-                        customBorder: const CircleBorder(),
-                        child: SizedBox(
-                          width: 36,
-                          height: 36,
-                          child: Icon(
-                            Icons.close,
-                            size: 22,
-                            color: isLight ? Colors.black87 : Colors.white,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Material(
+                          color: isLight
+                              ? Colors.black.withValues(alpha: 0.1)
+                              : Colors.white.withValues(alpha: 0.12),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            onTap: () async {
+                              String url = data.shareLink.trim().isEmpty
+                                  ? 'https://nuggo.me'
+                                  : data.shareLink;
+                              if (!url.startsWith('http')) url = 'https://$url';
+                              await SharePlus.instance.share(
+                                ShareParams(
+                                  text: url,
+                                  subject:
+                                      '명함: ${data.fullName.isNotEmpty ? data.fullName : "NUGGO"}',
+                                ),
+                              );
+                            },
+                            customBorder: const CircleBorder(),
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: Icon(
+                                Icons.send,
+                                size: 22,
+                                color: isLight ? Colors.black87 : Colors.white,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Material(
+                          color: isLight
+                              ? Colors.black.withValues(alpha: 0.1)
+                              : Colors.white.withValues(alpha: 0.12),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            onTap: () => _showQrDialog(context, data),
+                            customBorder: const CircleBorder(),
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: Icon(
+                                Icons.qr_code_2,
+                                size: 22,
+                                color: isLight ? Colors.black87 : Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Material(
+                          color: isLight
+                              ? Colors.black.withValues(alpha: 0.1)
+                              : Colors.white.withValues(alpha: 0.12),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            onTap: () => provider.setActiveView(
+                              provider.previousView ?? ViewType.myCards,
+                            ),
+                            customBorder: const CircleBorder(),
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: Icon(
+                                Icons.close,
+                                size: 24,
+                                color: isLight ? Colors.black87 : Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Positioned(
@@ -577,39 +700,44 @@ class _PreviewScreenState extends State<PreviewScreen> {
     Color textColor,
   ) {
     const double touchSize = 68;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: touchSize,
-          height: touchSize,
-          child: Material(
-            color: bgColor,
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: () => _handleAction(type, value, data),
-              customBorder: const CircleBorder(),
-              splashColor: textColor.withValues(alpha: 0.2),
-              highlightColor: textColor.withValues(alpha: 0.1),
-              child: Center(
-                child: Icon(icon, size: 24, color: textColor),
+    final bool enabled = value.isNotEmpty || type == 'share';
+    final double opacity = enabled ? 1.0 : 0.3;
+    return Opacity(
+      opacity: opacity,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: touchSize,
+            height: touchSize,
+            child: Material(
+              color: bgColor,
+              shape: const CircleBorder(),
+              child: InkWell(
+                onTap: enabled ? () => _handleAction(type, value, data) : null,
+                customBorder: const CircleBorder(),
+                splashColor: textColor.withValues(alpha: 0.2),
+                highlightColor: textColor.withValues(alpha: 0.1),
+                child: Center(
+                  child: Icon(icon, size: 24, color: textColor),
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 0),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 8,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1,
-            color: textColor,
+          const SizedBox(height: 0),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+              color: textColor,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

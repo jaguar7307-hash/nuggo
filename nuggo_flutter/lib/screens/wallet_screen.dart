@@ -257,9 +257,13 @@ class _WalletScreenState extends State<WalletScreen> {
         }
       },
       behavior: HitTestBehavior.translucent,
-      child: Stack(
-        children: [
-          Column(
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF5F5F7),
+        child: Stack(
+          children: [
+            Column(
             children: [
               _buildSearchBar(isDark),
               _buildFilterChips(isDark),
@@ -284,6 +288,7 @@ class _WalletScreenState extends State<WalletScreen> {
             child: Center(child: _buildScanFab()),
           ),
         ],
+      ),
       ),
     );
   }

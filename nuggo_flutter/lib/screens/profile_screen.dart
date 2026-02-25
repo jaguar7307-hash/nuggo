@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../constants/theme.dart';
 import '../models/card_data.dart';
 import '../models/profile.dart';
@@ -9,7 +15,36 @@ import '../providers/app_provider.dart';
 import '../widgets/digital_card.dart';
 import '../widgets/business_card.dart' show kBusinessCardAspectRatio;
 
-/// 내 명함 페이지 (My Card) - 첨부 디자인/HTML 기준
+/// 최근 전송 항목 (CRM용)
+class _RecentSendItem {
+  final String id;
+  final String name;
+  final String method;
+  String time;
+  final int revisitCount;
+  final int viewCount;
+  final String phone;
+  bool viewedWithin24h;
+  bool downloadedPdfWithin24h;
+  String memo;
+
+  _RecentSendItem({
+    required this.id,
+    required this.name,
+    required this.method,
+    required this.time,
+    this.revisitCount = 0,
+    this.viewCount = 0,
+    this.phone = '',
+    this.viewedWithin24h = false,
+    this.downloadedPdfWithin24h = false,
+    this.memo = '',
+  });
+
+  bool get isContractImminent => viewedWithin24h && downloadedPdfWithin24h;
+}
+
+/// 내 명함 페이지 (My Card) - 대시보드 형태
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -22,6 +57,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   static const Color _bgDark = Color(0xFF101822);
   static const Color _textMuted = Color(0xFF64748B);
+  static const Color _deepBlue = Color(0xFF1A237E);
+  static const Color _gold = Color(0xFFD4AF37);
+
+  /// 최근 7일 조회 추이 (미니 라인차트용)
+  static const List<double> _weekTrend = [12, 18, 14, 22, 28, 24, 30];
+  /// 최근 1시간 내 명함 조회 여부 (실시간 반응 배지)
+  final bool _hasRecentView = true;
+
+  late List<_RecentSendItem> _recentSends;
+
+  @override
+  void initState() {
+    super.initState();
+    _recentSends = [
+      _RecentSendItem(
+        id: '1',
+        name: 'David Chen',
+        method: 'NFC 태그로 전송',
+        time: '2분 전',
+        revisitCount: 4,
+        viewCount: 37,
+        phone: '010-1234-5678',
+        viewedWithin24h: true,
+        downloadedPdfWithin24h: true,
+        memo: 'A사 구매팀 미팅',
+      ),
+      _RecentSendItem(
+        id: '2',
+        name: 'Sarah Jenkins',
+        method: '카카오톡으로 전송',
+        time: '1시간 전',
+        revisitCount: 2,
+        viewCount: 31,
+        phone: '010-9876-5432',
+        viewedWithin24h: true,
+      ),
+      _RecentSendItem(
+        id: '3',
+        name: '김대리',
+        method: '링크 공유',
+        time: '어제',
+        revisitCount: 5,
+        viewCount: 29,
+        phone: '010-2222-3333',
+        memo: '전시회 부스 방문',
+      ),
+    ];
+  }
 
   String _tr(String language, String ko, String en) {
     return language == 'en' ? en : ko;
@@ -51,12 +134,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildSectionLabel(_tr(language, '프로필', 'PROFILES')),
                   const SizedBox(height: 12),
                   _buildProfilesRow(context, provider, profiles),
+                  const SizedBox(height: 20),
+                  _buildTopSection(context, provider, selected, views, sends, language),
+                  const SizedBox(height: 28),
+                  _buildInsightSection(views, sends, language),
                   const SizedBox(height: 24),
-                  _buildMainCard(context, provider, selected, views, sends),
-                  const SizedBox(height: 32),
-                  _buildRecentSendHistory(language),
+                  _buildCrmSection(language),
                   const SizedBox(height: 24),
-                  _buildInsightAnalysis(views, sends, language),
+                  _buildPrintSection(context, provider, selected, language),
                 ],
               ),
             ),
@@ -161,12 +246,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMainCard(
+  Widget _buildTopSection(
     BuildContext context,
     AppProvider provider,
     Profile selected,
     int views,
     int sends,
+    String language,
   ) {
     final data = selected.data;
     return LayoutBuilder(
@@ -228,16 +314,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       _ViewsSendsBlock(
                         icon: Icons.visibility,
+                        label: _tr(language, '조회', 'Views'),
                         value: _formatCount(views),
-                        subtitle: '+12.4%',
+                        subtitle: _tr(language, '24h ↑ 즉시 팔로업', '24h ↑ Follow up'),
                         subtitleColor: Colors.green.shade400,
                         subtitleIcon: Icons.arrow_upward,
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
                       _ViewsSendsBlock(
                         icon: Icons.send,
+                        label: _tr(language, '발송', 'Sends'),
                         value: _formatCount(sends),
-                        subtitle: '89% conv.',
+                        subtitle: _tr(language, '공유·전파 추적', 'Share tracking'),
                         subtitleColor: const Color(0xFF94A3B8),
                         subtitleIcon: Icons.trending_up,
                       ),
@@ -250,7 +338,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     _SideActionButton(
                       icon: Icons.send,
-                      onTap: () {},
+                      onTap: () => _shareCard(context, provider, selected),
                       filled: true,
                     ),
                     const SizedBox(height: 16),
@@ -260,8 +348,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 16),
                     _SideActionButton(
-                      icon: Icons.nfc,
-                      onTap: () {},
+                      icon: Icons.qr_code_2,
+                      onTap: () => _showQrDialog(context, selected, language),
                       showDot: true,
                     ),
                   ],
@@ -306,19 +394,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return n.toString();
   }
 
-  Widget _buildRecentSendHistory(String language) {
-    final mockItems = [
-      (
-        'David Chen',
-        _tr(language, 'NFC 태그로 전송', 'Sent via NFC Tag'),
-        _tr(language, '2분 전', '2 mins ago'),
-      ),
-      (
-        'Sarah Jenkins',
-        _tr(language, '카카오톡으로 전송', 'Sent via KakaoTalk'),
-        _tr(language, '1시간 전', '1 hour ago'),
-      ),
-    ];
+  Widget _buildInsightSection(int views, int sends, String language) {
+    final weekLabels = language == 'en'
+        ? const ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+        : const ['월', '화', '수', '목', '금', '토', '일'];
+    final maxY = _weekTrend.reduce((a, b) => a > b ? a : b).toDouble();
+    final spots = _weekTrend.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -326,50 +408,336 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: _buildSectionLabel(_tr(language, '최근 전송 내역', 'RECENT SEND HISTORY')),
+              child: _buildSectionLabel(_tr(language, '영업 인사이트', 'INSIGHT DASHBOARD')),
             ),
-            GestureDetector(
-              onTap: () {},
-              child: Text(
-                _tr(language, '전체 보기', 'VIEW ALL'),
-                style: GoogleFonts.manrope(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primary,
-                  letterSpacing: 1,
+            if (_hasRecentView)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _gold.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _gold.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('🔥', style: GoogleFonts.manrope(fontSize: 12)),
+                    const SizedBox(width: 4),
+                    Text(
+                      _tr(language, '뜨거운 반응!', 'Hot reaction!'),
+                      style: GoogleFonts.manrope(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: _gold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 12),
-        ...mockItems.map(
-          (e) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _RecentSendTile(name: e.$1, subtitle: e.$2, time: e.$3),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _deepBlue.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _deepBlue.withValues(alpha: 0.4)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInsightDashboardRow(
+                language,
+                dataLabel: _tr(language, '최근 24h 조회', '24h views'),
+                dataValue: '${views ~/ 10 + 8}',
+                meaning: _tr(language, '관심 잠재고객 포착', 'Hot leads'),
+                action: _tr(language, '즉시 팔로업', 'Follow up'),
+              ),
+              const SizedBox(height: 10),
+              _buildInsightDashboardRow(
+                language,
+                dataLabel: _tr(language, '소개서 다운로드', 'PDF downloads'),
+                dataValue: '${sends ~/ 5 + 3}',
+                meaning: _tr(language, '제안 관심도', 'Proposal interest'),
+                action: _tr(language, '맞춤 제안서 준비', 'Custom proposal'),
+              ),
+              const SizedBox(height: 10),
+              _buildInsightDashboardRow(
+                language,
+                dataLabel: _tr(language, '명함 공유 횟수', 'Shares'),
+                dataValue: '${sends ~/ 8 + 2}',
+                meaning: _tr(language, '인맥 확장·소개 영업', 'Viral potential'),
+                action: _tr(language, '감사 인사·리워드', 'Thank & reward'),
+              ),
+              const SizedBox(height: 10),
+              _buildInsightDashboardRow(
+                language,
+                dataLabel: _tr(language, '체류시간·주요 클릭', 'Dwell & clicks'),
+                dataValue: _tr(language, '포트폴리오 1위', 'Portfolio #1'),
+                meaning: _tr(language, '고객 니즈 역추적', 'Need insight'),
+                action: _tr(language, '콘텐츠 강화', 'Improve content'),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _tr(language, '최근 7일 방문 추이', 'Last 7 days trend'),
+                style: _insightLabelStyle(),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 100,
+                child: LineChart(
+                  LineChartData(
+                    gridData: FlGridData(show: false),
+                    titlesData: FlTitlesData(
+                      leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            final i = value.toInt();
+                            if (i >= 0 && i < 7) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  weekLabels[i],
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: _textMuted,
+                                  ),
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                          reservedSize: 16,
+                          interval: 1,
+                        ),
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    minX: 0,
+                    maxX: 6,
+                    minY: 0,
+                    maxY: maxY * 1.1,
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: spots,
+                        isCurved: true,
+                        color: _gold,
+                        barWidth: 2.5,
+                        isStrokeCapRound: true,
+                        dotData: FlDotData(
+                          show: true,
+                          getDotPainter: (spot, percent, barData, index) =>
+                              FlDotCirclePainter(
+                                radius: 3,
+                                color: _gold,
+                                strokeWidth: 1,
+                                strokeColor: _gold.withValues(alpha: 0.5),
+                              ),
+                        ),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          gradient: LinearGradient(
+                            colors: [_gold.withValues(alpha: 0.15), _gold.withValues(alpha: 0.02)],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  duration: const Duration(milliseconds: 200),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.only(top: 12),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                  ),
+                ),
+                child: _buildFollowUpSection(language),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildInsightAnalysis(int views, int sends, String language) {
-    const weekHeights = [0.3, 0.45, 0.85, 0.6, 0.55, 0.4, 0.35];
-    final weekLabels = language == 'en'
-        ? const ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-        : const ['월', '화', '수', '목', '금', '토', '일'];
+  /// 데이터 항목 | 영업적 의미 | 액션 플랜 한 줄
+  Widget _buildInsightDashboardRow(
+    String language, {
+    required String dataLabel,
+    required String dataValue,
+    required String meaning,
+    required String action,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  dataLabel,
+                  style: GoogleFonts.manrope(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: _textMuted,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dataValue,
+                  style: GoogleFonts.manrope(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: _gold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              meaning,
+              style: GoogleFonts.manrope(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withValues(alpha: 0.85),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Text(
+              action,
+              style: GoogleFonts.manrope(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.primary.withValues(alpha: 0.9),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFollowUpSection(String language) {
+    final topLeads = [..._recentSends]
+      ..sort((a, b) => b.viewCount.compareTo(a.viewCount));
+    final leads = topLeads.take(3).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: _buildSectionLabel(_tr(language, '인사이트 분석', 'INSIGHT ANALYSIS')),
-            ),
-            Icon(Icons.trending_up, size: 18, color: _textMuted),
-          ],
+        Text(
+          _tr(language, '오늘의 추천 팔로업 대상', 'Today follow-up picks'),
+          style: GoogleFonts.manrope(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
         ),
+        const SizedBox(height: 8),
+        ...leads.map((lead) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${lead.name} · 조회 ${lead.viewCount}',
+                    style: GoogleFonts.manrope(
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _launchCall(lead.phone),
+                  icon: const Icon(Icons.phone, size: 18, color: _gold),
+                  visualDensity: VisualDensity.compact,
+                ),
+                IconButton(
+                  onPressed: () => _launchSms(lead.phone),
+                  icon: const Icon(Icons.sms_outlined, size: 18, color: _gold),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildCrmSection(String language) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionLabel(_tr(language, '최근 전송 및 고객 메모', 'SMART CRM')),
+        const SizedBox(height: 12),
+        ..._recentSends.map((item) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _CrmExpansionTile(
+            item: item,
+            language: language,
+            onViewed: () {
+              setState(() {
+                item.viewedWithin24h = true;
+                item.time = '방금 전';
+              });
+            },
+            onMemoSaved: (memo) {
+              setState(() => item.memo = memo);
+            },
+          ),
+        )),
+      ],
+    );
+  }
+
+  Widget _buildPrintSection(
+    BuildContext context,
+    AppProvider provider,
+    Profile selected,
+    String language,
+  ) {
+    String url = selected.data.shareLink.trim();
+    if (url.isEmpty) url = 'https://nuggo.me';
+    if (!url.startsWith('http')) url = 'https://$url';
+    final data = selected.data;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionLabel(_tr(language, 'QR & 프린트', 'QR & PRINT')),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(20),
@@ -380,149 +748,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: Column(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _tr(language, '총 조회수', 'TOTAL VIEWS'),
-                          style: _insightLabelStyle(),
-                        ),
-                        const SizedBox(height: 4),
-                        Text('${views + 16}', style: _insightValueStyle()),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.arrow_upward,
-                              size: 12,
-                              color: Colors.green.shade400,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '12%',
-                              style: GoogleFonts.manrope(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 48,
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _tr(language, '성공률', 'SUCCESS RATE'),
-                          style: _insightLabelStyle(),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '98%',
-                          style: _insightValueStyle().copyWith(
-                            color: AppTheme.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _tr(language, '최고 성과', 'TOP PERFORMANCE'),
-                          style: _insightLabelStyle(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
               Container(
-                padding: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: QrImageView(
+                  data: url,
+                  version: QrVersions.auto,
+                  size: 140,
+                  backgroundColor: Colors.white,
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: Color(0xFF1A237E),
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: Color(0xFF1A237E),
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _tr(language, '주간 활동', 'WEEKLY ACTIVITY'),
-                            style: _insightLabelStyle(),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Text(
-                          _tr(language, '월 - 일', 'Mon - Sun'),
-                          style: GoogleFonts.manrope(
-                            fontSize: 9,
-                            color: _textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 92,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: List.generate(7, (i) {
-                          final isHighlight = i == 2;
-                          final barHeight =
-                              88 * 0.25 + (88 * 0.6 * weekHeights[i]);
-                          return Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 2,
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    height: barHeight,
-                                    decoration: BoxDecoration(
-                                      color: isHighlight
-                                          ? AppTheme.primary
-                                          : Colors.white.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    weekLabels[i],
-                                    style: GoogleFonts.manrope(
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.bold,
-                                      color: isHighlight
-                                          ? Colors.grey.shade400
-                                          : _textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                  ],
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => _generateAndShowPdf(context, provider, selected, data, url, language),
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 20),
+                label: Text(_tr(language, '프린트용 PDF 생성', 'Generate PDF for Print')),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _deepBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                 ),
               ),
             ],
@@ -530,6 +785,125 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _generateAndShowPdf(
+    BuildContext context,
+    AppProvider provider,
+    Profile selected,
+    CardData data,
+    String url,
+    String language,
+  ) async {
+    final doc = pw.Document();
+    final name = data.fullName.isEmpty ? selected.name : data.fullName;
+    final company = data.companyName;
+    final contact = [data.phone, data.email].where((e) => e.isNotEmpty).join(' · ');
+
+    doc.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context ctx) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              _tr(language, '매장 비치용 미니 배너 (A4 가이드)', 'Store Mini Banner (A4)'),
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 12),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(24),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey400),
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Container(
+                        width: 100,
+                        height: 100,
+                        color: PdfColors.grey300,
+                        child: pw.Center(child: pw.Text('QR', style: const pw.TextStyle(fontSize: 12))),
+                      ),
+                      pw.SizedBox(width: 20),
+                      pw.Expanded(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                            if (company.isNotEmpty) pw.Text(company, style: const pw.TextStyle(fontSize: 12)),
+                            if (contact.isNotEmpty) pw.Text(contact, style: const pw.TextStyle(fontSize: 10)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 12),
+                  pw.Text(url, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 24),
+            pw.Text(
+              _tr(language, '배포용 명함 시트', 'Card Sheet'),
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(16),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey400),
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(name, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  if (data.jobTitle.isNotEmpty) pw.Text(data.jobTitle, style: const pw.TextStyle(fontSize: 11)),
+                  if (company.isNotEmpty) pw.Text(company, style: const pw.TextStyle(fontSize: 11)),
+                  if (contact.isNotEmpty) pw.Text(contact, style: const pw.TextStyle(fontSize: 10)),
+                  pw.SizedBox(height: 8),
+                  pw.Text(url, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 16),
+            pw.Align(
+              alignment: pw.Alignment.center,
+              child: pw.Text(
+                _tr(
+                  language,
+                  '이 QR을 스캔하여 상세 정보를 확인하세요',
+                  'Scan this QR to view full details',
+                ),
+                style: pw.TextStyle(
+                  fontSize: 11,
+                  fontStyle: pw.FontStyle.italic,
+                  color: PdfColors.blueGrey700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (context.mounted) {
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => doc.save(),
+        name: 'nuggo_print_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
+      if (_recentSends.isNotEmpty) {
+        setState(() {
+          _recentSends.first.downloadedPdfWithin24h = true;
+          _recentSends.first.time = '방금 전';
+        });
+      }
+    }
   }
 
   TextStyle _insightLabelStyle() => GoogleFonts.manrope(
@@ -544,11 +918,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
     color: Colors.white,
   );
 
+  void _showQrDialog(BuildContext context, Profile selected, String language) {
+    String url = selected.data.shareLink.trim();
+    if (url.isEmpty) url = 'https://nuggo.me';
+    if (!url.startsWith('http')) url = 'https://$url';
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(_tr(language, '명함 QR 코드', 'Card QR Code')),
+        content: SizedBox(
+          width: 300,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: QrImageView(
+                    data: url,
+                    version: QrVersions.auto,
+                    size: 200,
+                    backgroundColor: Colors.white,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Color(0xFF1A237E),
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Color(0xFF1A237E),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  url,
+                  style: GoogleFonts.manrope(fontSize: 12, color: _textMuted),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(_tr(language, '닫기', 'Close')),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _shareCard(
     BuildContext context,
     AppProvider provider,
     Profile selected,
   ) {
+    setState(() {
+      _recentSends.insert(
+        0,
+        _RecentSendItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          name: selected.data.fullName.isEmpty ? selected.name : selected.data.fullName,
+          method: '공유 시도',
+          time: '방금 전',
+          revisitCount: 0,
+          viewCount: 0,
+          phone: selected.data.phone,
+        ),
+      );
+    });
     String url = selected.data.shareLink.trim();
     if (url.isEmpty) url = 'https://nuggo.me';
     if (!url.startsWith('http')) url = 'https://$url';
@@ -573,6 +1018,218 @@ class _ProfileScreenState extends State<ProfileScreen> {
       (profile.id.hashCode.abs() % 900) + 384;
   int _mockSendCount(Profile profile) =>
       (profile.id.hashCode.abs() % 200) + 252;
+
+  Future<void> _launchCall(String phone) async {
+    if (phone.isEmpty) return;
+    final uri = Uri(scheme: 'tel', path: phone);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _launchSms(String phone) async {
+    if (phone.isEmpty) return;
+    final uri = Uri(scheme: 'sms', path: phone);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
+/// CRM 전송 내역 ExpansionTile: 클릭 시 미팅 메모 입력, 3회 이상 재방문 시 ⭐ 표시
+class _CrmExpansionTile extends StatefulWidget {
+  final _RecentSendItem item;
+  final String language;
+  final VoidCallback onViewed;
+  final ValueChanged<String> onMemoSaved;
+
+  const _CrmExpansionTile({
+    required this.item,
+    required this.language,
+    required this.onViewed,
+    required this.onMemoSaved,
+  });
+
+  @override
+  State<_CrmExpansionTile> createState() => _CrmExpansionTileState();
+}
+
+class _CrmExpansionTileState extends State<_CrmExpansionTile> {
+  late TextEditingController _memoController;
+
+  @override
+  void initState() {
+    super.initState();
+    _memoController = TextEditingController(text: widget.item.memo);
+  }
+
+  @override
+  void dispose() {
+    _memoController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Color(0xFFD4AF37);
+    final item = widget.item;
+    final showStar = item.revisitCount >= 3;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          onExpansionChanged: (expanded) {
+            if (expanded) widget.onViewed();
+          },
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          title: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade800,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.person, color: Colors.white.withValues(alpha: 0.4), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.name,
+                            style: GoogleFonts.manrope(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (showStar) ...[
+                          const SizedBox(width: 4),
+                          const Icon(Icons.star_rounded, size: 16, color: gold),
+                        ],
+                        if (item.isContractImminent) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                            ),
+                            child: Text(
+                              widget.language == 'en' ? '🔥 Deal close' : '🔥 계약 임박',
+                              style: GoogleFonts.manrope(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFFFFA2A2),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      item.method,
+                      style: GoogleFonts.manrope(fontSize: 11, color: const Color(0xFF64748B)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                item.time,
+                style: GoogleFonts.manrope(fontSize: 10, color: const Color(0xFF64748B)),
+              ),
+            ],
+          ),
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _quickTagChip('방문예정'),
+                _quickTagChip('자료전달'),
+                _quickTagChip('계약완료'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _memoController,
+              maxLines: 3,
+              style: GoogleFonts.manrope(fontSize: 13, color: Colors.white),
+              decoration: InputDecoration(
+                hintText: widget.language == 'en'
+                    ? 'Short meeting note...'
+                    : '짧은 미팅 메모를 입력하세요',
+                hintStyle: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFF64748B)),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.06),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () {
+                  widget.onMemoSaved(_memoController.text);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(widget.language == 'en' ? 'Memo saved.' : '메모가 저장되었습니다.'),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: AppTheme.primary,
+                    ),
+                  );
+                },
+                child: Text(
+                  widget.language == 'en' ? 'Save memo' : '메모 저장',
+                  style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _quickTagChip(String tag) {
+    return ActionChip(
+      onPressed: () {
+        final hasText = _memoController.text.trim().isNotEmpty;
+        final next = hasText ? '${_memoController.text}\n[$tag]' : '[$tag] ';
+        setState(() {
+          _memoController.text = next;
+          _memoController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _memoController.text.length),
+          );
+        });
+      },
+      label: Text(
+        tag,
+        style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+      backgroundColor: Colors.white.withValues(alpha: 0.08),
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+      labelStyle: const TextStyle(color: Colors.white),
+    );
+  }
 }
 
 class _ProfilePill extends StatelessWidget {
@@ -741,9 +1398,11 @@ class _AddProfilePill extends StatelessWidget {
   }
 }
 
-/// 조회수/발송수 블록 (카드 오른쪽)
+/// 조회/발송 단일 블록 (카드 오른쪽, 중복 제거용)
 class _ViewsSendsBlock extends StatelessWidget {
+  static const Color _textMuted = Color(0xFF64748B);
   final IconData icon;
+  final String label;
   final String value;
   final String subtitle;
   final Color subtitleColor;
@@ -751,6 +1410,7 @@ class _ViewsSendsBlock extends StatelessWidget {
 
   const _ViewsSendsBlock({
     required this.icon,
+    required this.label,
     required this.value,
     required this.subtitle,
     required this.subtitleColor,
@@ -762,36 +1422,49 @@ class _ViewsSendsBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: AppTheme.primary.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 16, color: AppTheme.primary),
+        Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 14, color: AppTheme.primary),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.manrope(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: _textMuted,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Text(
           value,
           style: GoogleFonts.manrope(
-            fontSize: 36,
+            fontSize: 28,
             fontWeight: FontWeight.w800,
             color: Colors.white,
             letterSpacing: -1,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Row(
           children: [
-            Icon(subtitleIcon, size: 12, color: subtitleColor),
+            Icon(subtitleIcon, size: 10, color: subtitleColor),
             const SizedBox(width: 4),
             Expanded(
               child: Text(
                 subtitle,
                 style: GoogleFonts.manrope(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
                   color: subtitleColor,
                 ),
                 overflow: TextOverflow.ellipsis,
