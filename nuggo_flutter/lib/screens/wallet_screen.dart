@@ -294,6 +294,7 @@ class _WalletScreenState extends State<WalletScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: TextField(
         controller: _searchController,
+        autofocus: false,
         onChanged: (v) => setState(() => _searchQuery = v),
         style: TextStyle(color: isDark ? Colors.white : Colors.black87),
         decoration: InputDecoration(
@@ -805,6 +806,9 @@ class _WalletScreenState extends State<WalletScreen> {
   // 명함 상세 (슬라이드 앞면/뒷면)
   // ═══════════════════════════════════════════
   void _showCardDetail(BuildContext context, WalletCard card) {
+    // 시트 열기 전 포커스 해제 (시트 닫힐 때 검색창 자동 활성화 방지)
+    FocusScope.of(context).unfocus();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -831,17 +835,34 @@ class _WalletScreenState extends State<WalletScreen> {
         },
         onDelete: () {
           Navigator.pop(context);
+          final deletedIndex = _cards.indexOf(card);
           setState(() => _cards.remove(card));
+
+          ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${card.name}님 명함이 삭제되었습니다.'),
               behavior: SnackBarBehavior.floating,
               backgroundColor: Colors.red.shade600,
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: '되돌기',
+                textColor: Colors.white,
+                onPressed: () {
+                  setState(() {
+                    final insertAt = deletedIndex.clamp(0, _cards.length);
+                    _cards.insert(insertAt, card);
+                  });
+                },
+              ),
             ),
           );
         },
       ),
-    );
+    ).then((_) {
+      // 시트 닫힐 때 포커스 해제 → 검색창 키보드 자동 올라오기 방지
+      if (mounted) FocusScope.of(context).unfocus();
+    });
   }
 
   // ═══════════════════════════════════════════
