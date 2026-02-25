@@ -184,6 +184,7 @@ class WalletScreen extends StatefulWidget {
 
 class _WalletScreenState extends State<WalletScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   int _filterIndex = 0; // 0=전체, 1=디지털, 2=스캔, 3=즐겨찾기
   String _searchQuery = '';
   final List<WalletCard> _cards = List.from(_sampleCards);
@@ -235,6 +236,7 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -294,6 +296,7 @@ class _WalletScreenState extends State<WalletScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: TextField(
         controller: _searchController,
+        focusNode: _searchFocusNode,
         autofocus: false,
         onChanged: (v) => setState(() => _searchQuery = v),
         style: TextStyle(color: isDark ? Colors.white : Colors.black87),
@@ -860,8 +863,13 @@ class _WalletScreenState extends State<WalletScreen> {
         },
       ),
     ).then((_) {
-      // 시트 닫힐 때 포커스 해제 → 검색창 키보드 자동 올라오기 방지
-      if (mounted) FocusScope.of(context).unfocus();
+      // 시트 닫힌 뒤 포커스가 검색창으로 복원되는 것 방지 (한 프레임 뒤에 해제)
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _searchFocusNode.unfocus();
+        FocusScope.of(context).unfocus();
+      });
     });
   }
 
