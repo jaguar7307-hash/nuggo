@@ -34,9 +34,8 @@ class _EditorScreenState extends State<EditorScreen> {
   final GlobalKey _languageModeToggleKey = GlobalKey();
   OverlayEntry? _languageModeOverlay;
 
-  /// 미리보기 아이콘과 나란히 보이도록 저장 버튼 top (4+52+6 + preview 내부 아이콘 세로 중심 - 32)
-  static const double _saveButtonTopAlignWithPreviewIcon =
-      421.0; // 기존 기준에서 1.5cm(약 57px) 하향
+  /// 명함 우상단(보내기 버튼 위)으로 배치
+  static const double _saveButtonTopAlignWithPreviewIcon = 360.0;
   bool _scrollToBackgroundScheduled = false;
   bool _sloganDefaultSet = false;
   String? _pendingDefaultSlogan;
@@ -1074,6 +1073,8 @@ class _EditorScreenState extends State<EditorScreen> {
       shape: const CircleBorder(),
       child: InkWell(
         onTap: () {
+          // 입력 포커스를 먼저 정리해 키보드 재상승/다이얼로그 찌그러짐을 방지
+          FocusManager.instance.primaryFocus?.unfocus();
           _showSaveDialog(context, provider, _getTexts(provider.settings.language));
         },
         customBorder: const CircleBorder(),
@@ -1954,66 +1955,78 @@ class _EditorScreenState extends State<EditorScreen> {
       context: context,
       builder: (dialogContext) {
         final mq = MediaQuery.of(dialogContext);
-        final maxW = (mq.size.width - 48).clamp(260.0, 320.0);
-        return AlertDialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          scrollable: true,
-          title: Text(
-            isUpdateMode ? t['saveDialogTitleUpdateOrNew']! : t['saveDialogTitleNew']!,
-          ),
-          content: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxW),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isUpdateMode
-                      ? t['saveDialogDescUpdateOrNew']!
-                      : t['saveDialogDescNewOnly']!,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+        final maxW = (mq.size.width - 48).clamp(260.0, 360.0);
+        final keyboardInset = mq.viewInsets.bottom;
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(bottom: keyboardInset),
+          child: AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            scrollable: true,
+            title: Text(
+              isUpdateMode
+                  ? t['saveDialogTitleUpdateOrNew']!
+                  : t['saveDialogTitleNew']!,
+            ),
+            content: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxW),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isUpdateMode
+                        ? t['saveDialogDescUpdateOrNew']!
+                        : t['saveDialogDescNewOnly']!,
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: t['profileNameLabel'],
+                      hintText: t['profileNameHint'],
+                      labelStyle: GoogleFonts.notoSansKr(),
+                      hintStyle: GoogleFonts.notoSansKr(color: Colors.grey),
+                    ),
+                    style: GoogleFonts.notoSansKr(fontSize: 16),
+                    autofocus: true,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) =>
+                        saveAs(dialogContext, updateCurrent: isUpdateMode),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(t['cancel']!),
+              ),
+              if (isUpdateMode)
+                OutlinedButton(
+                  onPressed: () => saveAs(dialogContext, updateCurrent: false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                    side: const BorderSide(color: AppTheme.primary),
+                  ),
+                  child: Text(t['saveAsNew']!),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                labelText: t['profileNameLabel'],
-                hintText: t['profileNameHint'],
-                labelStyle: GoogleFonts.notoSansKr(),
-                hintStyle: GoogleFonts.notoSansKr(color: Colors.grey),
+              OutlinedButton(
+                onPressed: () =>
+                    saveAs(dialogContext, updateCurrent: isUpdateMode),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primary,
+                  side: const BorderSide(color: AppTheme.primary),
+                ),
+                child: Text(
+                  isUpdateMode ? t['updateCurrentProfile']! : t['saveAsNew']!,
+                ),
               ),
-              style: GoogleFonts.notoSansKr(fontSize: 16),
-              autofocus: true,
-            ),
-              ],
-            ),
+            ],
           ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(t['cancel']!),
-          ),
-          if (isUpdateMode)
-            OutlinedButton(
-              onPressed: () => saveAs(dialogContext, updateCurrent: false),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.primary,
-                side: const BorderSide(color: AppTheme.primary),
-              ),
-              child: Text(t['saveAsNew']!),
-            ),
-          OutlinedButton(
-            onPressed: () => saveAs(dialogContext, updateCurrent: isUpdateMode),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.primary,
-              side: const BorderSide(color: AppTheme.primary),
-            ),
-            child: Text(
-              isUpdateMode ? t['updateCurrentProfile']! : t['saveAsNew']!,
-            ),
-          ),
-        ],
-      );
+        );
     },
     );
   }
