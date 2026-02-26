@@ -370,11 +370,78 @@ class _PreviewScreenState extends State<PreviewScreen> {
                   decoration: TextDecoration.none,
                   decorationColor: Colors.transparent,
                 ),
-                child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 56, 20, 260),
+                child: Column(
+                  children: [
+                    // ── 상단 바: 로고 + 보내기/QR/닫기 (겹침 없음) ──
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          Opacity(
+                            opacity: 0.8,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                NuggoLogo(
+                                  size: 18,
+                                  color: isLight
+                                      ? NuggoLogo.defaultColor
+                                      : Colors.white,
+                                ),
+                                const SizedBox(width: 5),
+                                NuggoTextLogo(
+                                  fontSize: 13,
+                                  variant: isLight
+                                      ? LogoVariant.brand
+                                      : LogoVariant.white,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+                          _previewTopBtn(
+                            icon: Icons.send,
+                            isLight: isLight,
+                            onTap: () async {
+                              String url = data.shareLink.trim().isEmpty
+                                  ? 'https://nuggo.me'
+                                  : data.shareLink;
+                              if (!url.startsWith('http')) {
+                                url = 'https://$url';
+                              }
+                              await SharePlus.instance.share(
+                                ShareParams(
+                                  text: url,
+                                  subject:
+                                      '명함: ${data.fullName.isNotEmpty ? data.fullName : "NUGGO"}',
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 4),
+                          _previewTopBtn(
+                            icon: Icons.qr_code_2,
+                            isLight: isLight,
+                            onTap: () => _showQrDialog(context, data),
+                          ),
+                          const SizedBox(width: 4),
+                          _previewTopBtn(
+                            icon: Icons.close,
+                            isLight: isLight,
+                            onTap: () => provider.setActiveView(
+                              provider.previousView ?? ViewType.myCards,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 260),
                       child: Column(
                         children: [
                           SizedBox(
@@ -614,113 +681,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     ),
                   ),
                   Positioned(
-                    top: 14,
-                    left: 20,
-                    right: 200,
-                    child: Center(
-                      child: Opacity(
-                        opacity: 0.75,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            NuggoLogo(
-                              size: 24,
-                              color:
-                                  isLight ? NuggoLogo.defaultColor : Colors.white,
-                            ),
-                            const SizedBox(width: 6),
-                            const NuggoTextLogo(
-                              fontSize: 16,
-                              variant: LogoVariant.brand,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 14,
-                    right: 20,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Material(
-                          color: isLight
-                              ? Colors.black.withValues(alpha: 0.1)
-                              : Colors.white.withValues(alpha: 0.12),
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            onTap: () async {
-                              String url = data.shareLink.trim().isEmpty
-                                  ? 'https://nuggo.me'
-                                  : data.shareLink;
-                              if (!url.startsWith('http')) url = 'https://$url';
-                              await SharePlus.instance.share(
-                                ShareParams(
-                                  text: url,
-                                  subject:
-                                      '명함: ${data.fullName.isNotEmpty ? data.fullName : "NUGGO"}',
-                                ),
-                              );
-                            },
-                            customBorder: const CircleBorder(),
-                            child: SizedBox(
-                              width: 48,
-                              height: 48,
-                              child: Icon(
-                                Icons.send,
-                                size: 22,
-                                color: isLight ? Colors.black87 : Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Material(
-                          color: isLight
-                              ? Colors.black.withValues(alpha: 0.1)
-                              : Colors.white.withValues(alpha: 0.12),
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            onTap: () => _showQrDialog(context, data),
-                            customBorder: const CircleBorder(),
-                            child: SizedBox(
-                              width: 48,
-                              height: 48,
-                              child: Icon(
-                                Icons.qr_code_2,
-                                size: 22,
-                                color: isLight ? Colors.black87 : Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Material(
-                          color: isLight
-                              ? Colors.black.withValues(alpha: 0.1)
-                              : Colors.white.withValues(alpha: 0.12),
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            onTap: () => provider.setActiveView(
-                              provider.previousView ?? ViewType.myCards,
-                            ),
-                            customBorder: const CircleBorder(),
-                            child: SizedBox(
-                              width: 48,
-                              height: 48,
-                              child: Icon(
-                                Icons.close,
-                                size: 24,
-                                color: isLight ? Colors.black87 : Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
                     left: 24,
                     right: 72,
                     bottom: 72,
@@ -803,13 +763,42 @@ class _PreviewScreenState extends State<PreviewScreen> {
                       ),
                     ),
                   ),
-                ],
-                ),
-              ),
-            ),
+                        ],   // Stack.children
+                      ),     // Stack
+                    ),       // Expanded
+                  ],         // Column.children
+                ),           // Column
+              ),             // DefaultTextStyle.merge
+            ),               // SafeArea
           ],
         );
       },
+    );
+  }
+
+  Widget _previewTopBtn({
+    required IconData icon,
+    required bool isLight,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: isLight
+          ? Colors.black.withValues(alpha: 0.1)
+          : Colors.white.withValues(alpha: 0.12),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(
+            icon,
+            size: 20,
+            color: isLight ? Colors.black87 : Colors.white,
+          ),
+        ),
+      ),
     );
   }
 
