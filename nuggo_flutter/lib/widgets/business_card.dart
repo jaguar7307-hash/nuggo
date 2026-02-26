@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/card_data.dart';
 import '../constants/theme.dart';
+import '../debug_scroll_log.dart';
 
 /// 명함 비율 상수 (242.55 : 388.08 = 1 : 1.6)
 const double kBusinessCardAspectWidth = 242.55;
@@ -53,6 +54,26 @@ class BusinessCard extends StatelessWidget {
         : Colors.white.withValues(alpha: 0.8);
     final hasProfileImage =
         data.profileImage != null && data.profileImage!.isNotEmpty;
+    // #region agent log
+    debugScrollLog(
+      location: 'business_card.dart:build',
+      message: 'card_render_state',
+      data: {
+        'screenW': MediaQuery.of(context).size.width,
+        'screenH': MediaQuery.of(context).size.height,
+        'hasProfileImage': hasProfileImage,
+        'phoneEnabled': data.phone.isNotEmpty,
+        'smsEnabled': data.sms.isNotEmpty,
+        'emailEnabled': data.email.isNotEmpty,
+        'websiteEnabled': data.website.isNotEmpty,
+        'kakaoEnabled': data.kakao.isNotEmpty,
+        'portfolioEnabled': ((data.portfolioUrl ?? '').isNotEmpty ||
+            (data.portfolioFile ?? '').isNotEmpty),
+      },
+      hypothesisId: 'H2_H3',
+      runId: 'run1',
+    );
+    // #endregion
 
     return SizedBox.expand(
       child: Container(
@@ -418,7 +439,20 @@ class _ActionIcon extends StatelessWidget {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: enabled ? onTap : null,
+      onTap: enabled
+          ? () {
+              // #region agent log
+              debugScrollLog(
+                location: 'business_card.dart:_ActionIcon.onTap',
+                message: 'action_icon_tapped',
+                data: {'label': label, 'enabled': enabled},
+                hypothesisId: 'H4_H5',
+                runId: 'run1',
+              );
+              // #endregion
+              onTap();
+            }
+          : null,
       child: Align(
         alignment: Alignment.center,
         child: Padding(

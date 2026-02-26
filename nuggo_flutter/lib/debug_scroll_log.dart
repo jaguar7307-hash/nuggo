@@ -28,16 +28,18 @@ void debugScrollLog({
     if (runId != null) 'runId': runId,
   };
   unawaited(
-    http
-        .post(
+    () async {
+      try {
+        await http.post(
           Uri.parse(_kEndpoint),
           headers: {
             'Content-Type': 'application/json',
             'X-Debug-Session-Id': _kSessionId,
           },
           body: jsonEncode(payload),
-        )
-        .catchError((_) {}),
+        );
+      } catch (_) {}
+    }(),
   );
 }
 // #endregion

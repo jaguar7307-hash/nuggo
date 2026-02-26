@@ -282,6 +282,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, constraints) {
         final isWideDesktop = constraints.maxWidth >= 560;
         final cardWidth = constraints.maxWidth * (isWideDesktop ? 0.42 : 0.52);
+        // #region agent log
+        debugScrollLog(
+          location: 'profile_screen.dart:_buildTopSection',
+          message: 'layout_metrics',
+          data: {
+            'maxWidth': constraints.maxWidth,
+            'isWideDesktop': isWideDesktop,
+            'cardWidth': cardWidth,
+            'remainingAfterCardGap': constraints.maxWidth - cardWidth - 24 - 8,
+          },
+          hypothesisId: 'H1',
+          runId: 'run1',
+        );
+        // #endregion
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -1003,6 +1017,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     AppProvider provider,
     Profile selected,
   ) {
+    // #region agent log
+    debugScrollLog(
+      location: 'profile_screen.dart:_shareCard',
+      message: 'share_button_tapped',
+      data: {
+        'selectedProfileId': selected.id,
+        'shareLinkEmpty': selected.data.shareLink.trim().isEmpty,
+      },
+      hypothesisId: 'H5',
+      runId: 'run1',
+    );
+    // #endregion
     setState(() {
       _recentSends.insert(
         0,
