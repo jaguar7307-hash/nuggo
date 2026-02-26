@@ -281,7 +281,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWideDesktop = constraints.maxWidth >= 560;
-        final cardWidth = constraints.maxWidth * (isWideDesktop ? 0.42 : 0.52);
+        final isCompact = constraints.maxWidth < 380;
+        final cardWidthFactor = isWideDesktop ? 0.42 : (isCompact ? 0.46 : 0.50);
+        final cardWidth = constraints.maxWidth * cardWidthFactor;
         // #region agent log
         debugScrollLog(
           location: 'profile_screen.dart:_buildTopSection',
@@ -343,7 +345,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 24),
+                SizedBox(width: isCompact ? 12 : 24),
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -369,7 +371,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: isCompact ? 6 : 8),
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1483,12 +1485,16 @@ class _ViewsSendsBlock extends StatelessWidget {
               child: Icon(icon, size: 14, color: AppTheme.primary),
             ),
             const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.manrope(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: _textMuted,
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.manrope(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _textMuted,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
