@@ -93,24 +93,27 @@ class BusinessCard extends StatelessWidget {
               ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildTopSection(
-                    context,
-                    textColor: textColor,
-                    hasProfileImage: hasProfileImage,
-                  ),
-                  _buildIdentitySection(
-                    textColor: textColor,
-                    accentColor: accentColor,
-                  ),
-                  _buildBottomSection(
-                    context,
-                    textColor: textColor,
-                    accentColor: accentColor,
-                  ),
-                ],
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTopSection(
+                      context,
+                      textColor: textColor,
+                      hasProfileImage: hasProfileImage,
+                    ),
+                    _buildIdentitySection(
+                      textColor: textColor,
+                      accentColor: accentColor,
+                    ),
+                    _buildBottomSection(
+                      context,
+                      textColor: textColor,
+                      accentColor: accentColor,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

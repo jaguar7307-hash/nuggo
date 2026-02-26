@@ -103,8 +103,163 @@ class _PreviewScreenState extends State<PreviewScreen> {
     );
   }
 
+  static String _normalizePhone(String raw) {
+    return raw
+        .replaceAll(RegExp(r'[\s\-\(\)\.]'), '')
+        .replaceAll(RegExp(r'[^\d+]'), '');
+  }
+
+  void _showMailChoice(BuildContext context, CardData data) {
+    if (data.email.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: Material(
+          color: Theme.of(ctx).colorScheme.surface,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '메일 보내기',
+                  style: Theme.of(ctx)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _handleAction('mail', data.email, data);
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 20,
+                            horizontal: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.mail_outline,
+                                size: 40,
+                                color: Theme.of(ctx).colorScheme.primary,
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                '기본 메일 앱',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _handleAction('mail_naver', data.email, data);
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 20,
+                            horizontal: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              Image.asset(
+                                'assets/images/naver_mail_icon.png',
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.contain,
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                '네이버 메일',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handlePortfolioAction(BuildContext context, CardData data) async {
+    final url = (data.portfolioUrl ?? '').trim();
+    final fileData = data.portfolioFile;
+    if (url.isNotEmpty) {
+      final uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('링크를 열 수 없습니다.')),
+          );
+        }
+      }
+    } else if (fileData != null &&
+        fileData.isNotEmpty &&
+        fileData.startsWith('data:')) {
+      try {
+        final parts = fileData.split(',');
+        if (parts.length >= 2) {
+          final bytes = base64Decode(parts.last);
+          final mimeMatch = RegExp(r'data:([^;]+);').firstMatch(fileData);
+          final mime = mimeMatch?.group(1) ?? 'application/octet-stream';
+          final ext = mime.contains('pdf')
+              ? 'pdf'
+              : (mime.contains('image') ? 'jpg' : 'bin');
+          await SharePlus.instance.share(ShareParams(
+            files: [
+              XFile.fromData(bytes, mimeType: mime, name: 'portfolio.$ext'),
+            ],
+          ));
+        }
+      } catch (_) {}
+    }
+  }
+
   Future<void> _handleAction(String type, String value, CardData data) async {
-    if (value.isEmpty && type != 'share') return;
+    if (value.isEmpty && type != 'share' && type != 'portfolio') return;
     if (type == 'share') {
       String url = data.shareLink.trim().isEmpty ? 'https://nuggo.me' : data.shareLink;
       if (!url.startsWith('http')) url = 'https://$url';
@@ -116,25 +271,43 @@ class _PreviewScreenState extends State<PreviewScreen> {
       );
       return;
     }
+    if (type == 'mail') {
+      _showMailChoice(context, data);
+      return;
+    }
+    if (type == 'portfolio') {
+      await _handlePortfolioAction(context, data);
+      return;
+    }
     final Uri? uri;
     switch (type) {
       case 'call':
-        uri = Uri(scheme: 'tel', path: value);
+        final tel = _normalizePhone(value);
+        uri = tel.isNotEmpty ? Uri(scheme: 'tel', path: tel) : null;
         break;
       case 'sms':
-        uri = Uri(scheme: 'sms', path: value);
+        final sms = _normalizePhone(value);
+        uri = sms.isNotEmpty ? Uri(scheme: 'sms', path: sms) : null;
         break;
-      case 'mail':
-        uri = Uri(scheme: 'mailto', path: value);
+      case 'mail_naver':
+        uri = Uri.parse(
+          'https://mail.naver.com/write?to=${Uri.encodeComponent(value)}',
+        );
         break;
       case 'language':
+      case 'website':
         uri = Uri.parse(value.startsWith('http') ? value : 'https://$value');
         break;
-      case 'portfolio':
-        uri = Uri.parse(value.startsWith('http') ? value : 'https://$value');
-        break;
-      case 'forum':
-        uri = Uri.parse('https://search.naver.com/search.naver?query=$value');
+      case 'kakao':
+        if (value.startsWith('http') || value.contains('open.kakao.com')) {
+          uri = Uri.parse(value.startsWith('http') ? value : 'https://$value');
+        } else if (value.trim().isNotEmpty) {
+          uri = Uri.parse(
+            'https://open.kakao.com/me/${Uri.encodeComponent(value.trim())}',
+          );
+        } else {
+          uri = null;
+        }
         break;
       default:
         uri = null;
@@ -143,11 +316,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
       try {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } catch (_) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('링크를 열 수 없습니다.')),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('링크를 열 수 없습니다.')),
+        );
       }
     }
   }
@@ -363,7 +535,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 data,
                                 Icons.chat_outlined,
                                 'KAKAO',
-                                'forum',
+                                'kakao',
                                 data.kakao,
                                 iconBg,
                                 subColor,
