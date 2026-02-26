@@ -5,15 +5,16 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:http/http.dart' as http;
 
 // #region agent log
-const String _kSessionId = '18f43c';
+const String _kSessionId = '9988cb';
 const String _kEndpoint =
-    'http://127.0.0.1:7457/ingest/6dc26a65-f9be-42f4-976e-f25462710aef';
+    'http://127.0.0.1:7413/ingest/6dbd83f8-f651-4713-af0a-e01d234374db';
 
 void debugScrollLog({
   required String location,
   required String message,
   Map<String, dynamic>? data,
   String? hypothesisId,
+  String? runId,
 }) {
   if (!kDebugMode) return;
   final payload = <String, dynamic>{
@@ -24,6 +25,7 @@ void debugScrollLog({
     'message': message,
     if (data != null) 'data': data,
     if (hypothesisId != null) 'hypothesisId': hypothesisId,
+    if (runId != null) 'runId': runId,
   };
   unawaited(
     http
