@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/card_data.dart';
+import 'business_card.dart';
 import 'digital_card.dart';
 
 /// 명함을 지정 크기로 표시. 내 명함·에디터·미리보기 공통.
@@ -13,6 +14,8 @@ class CardDisplay extends StatelessWidget {
   final CardData data;
   final VoidCallback? onAddressClick;
   final bool showShadow;
+  final bool interactive;
+  final bool forceActionIconsEnabled;
 
   const CardDisplay({
     super.key,
@@ -21,18 +24,28 @@ class CardDisplay extends StatelessWidget {
     required this.data,
     this.onAddressClick,
     this.showShadow = true,
+    this.interactive = true,
+    this.forceActionIconsEnabled = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Widget cardChild = interactive
+        ? DigitalCard(
+            data: data,
+            isLarge: false,
+            onAddressClick: onAddressClick,
+          )
+        : BusinessCard(
+            data: data,
+            onAddressClick: onAddressClick,
+            forceActionIconsEnabled: forceActionIconsEnabled,
+          );
+
     final card = SizedBox(
       width: canonicalWidth,
       height: canonicalHeight,
-      child: DigitalCard(
-        data: data,
-        isLarge: false,
-        onAddressClick: onAddressClick,
-      ),
+      child: cardChild,
     );
 
     final content = FittedBox(

@@ -15,12 +15,14 @@ class BusinessCard extends StatelessWidget {
   final CardData data;
   final VoidCallback? onAddressClick;
   final void Function(String type, String value)? onAction;
+  final bool forceActionIconsEnabled;
 
   const BusinessCard({
     super.key,
     required this.data,
     this.onAddressClick,
     this.onAction,
+    this.forceActionIconsEnabled = false,
   });
 
   bool get _isHexTheme => data.theme.startsWith('#');
@@ -277,6 +279,7 @@ class BusinessCard extends StatelessWidget {
   }) {
     final isLight = _isLightBackground;
     final iconColor = isLight ? Colors.black87 : Colors.white;
+    final iconsEnabled = forceActionIconsEnabled || onAction != null;
 
     return Align(
       alignment: Alignment.bottomCenter,
@@ -292,7 +295,7 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.phone,
                     label: 'PHONE',
-                    enabled: data.phone.isNotEmpty,
+                    enabled: iconsEnabled && data.phone.isNotEmpty,
                     color: iconColor,
                     onTap: () => _handleTap('call', data.phone),
                   ),
@@ -301,7 +304,7 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.chat_bubble,
                     label: 'MESSAGE',
-                    enabled: data.sms.isNotEmpty,
+                    enabled: iconsEnabled && (data.sms.isNotEmpty || data.phone.isNotEmpty),
                     color: iconColor,
                     onTap: () => _handleTap(
                       'sms',
@@ -313,7 +316,7 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.mail,
                     label: 'EMAIL',
-                    enabled: data.email.isNotEmpty,
+                    enabled: iconsEnabled && data.email.isNotEmpty,
                     color: iconColor,
                     onTap: () => _handleTap('mail', data.email),
                   ),
@@ -328,7 +331,7 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.language,
                     label: 'WEBSITE',
-                    enabled: data.website.isNotEmpty,
+                    enabled: iconsEnabled && data.website.isNotEmpty,
                     color: iconColor,
                     onTap: () => _handleTap('website', data.website),
                   ),
@@ -337,7 +340,7 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.chat_outlined,
                     label: 'KAKAO',
-                    enabled: data.kakao.isNotEmpty,
+                    enabled: iconsEnabled && data.kakao.isNotEmpty,
                     color: iconColor,
                     onTap: () => _handleTap('kakao', data.kakao),
                   ),
@@ -346,7 +349,7 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.share,
                     label: 'SNS',
-                    enabled: true,
+                    enabled: iconsEnabled,
                     color: iconColor,
                     onTap: () => _handleTap('share', ''),
                   ),
@@ -357,8 +360,9 @@ class BusinessCard extends StatelessWidget {
             _ActionIcon(
               icon: Icons.folder_open,
               label: '포트폴리오',
-              enabled: ((data.portfolioUrl ?? '').isNotEmpty ||
-                  (data.portfolioFile ?? '').isNotEmpty),
+              enabled: iconsEnabled &&
+                  ((data.portfolioUrl ?? '').isNotEmpty ||
+                      (data.portfolioFile ?? '').isNotEmpty),
               color: iconColor,
               onTap: () => _handleTap(
                 'portfolio',
