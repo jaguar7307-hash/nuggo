@@ -996,7 +996,15 @@ class _EditorScreenState extends State<EditorScreen> {
             keyboardType: TextInputType.phone,
             onChanged: (value) =>
                 provider.updateCardData(data.copyWith(sms: value)),
-            onTap: () => _maybeShowBasicProfileToast(context, provider, t),
+            onTap: () {
+              _maybeShowBasicProfileToast(context, provider, t);
+              // SMS 비어있을 때 전화번호 자동 복사 (단방향: SMS만 변경)
+              final smsCtrl = _getFormController('sms', data.sms);
+              if (smsCtrl.text.isEmpty && data.phone.isNotEmpty) {
+                smsCtrl.text = data.phone;
+                provider.updateCardData(data.copyWith(sms: data.phone));
+              }
+            },
           ),
           const SizedBox(height: 12),
           _buildPillInput(
@@ -2185,7 +2193,7 @@ class _EditorScreenState extends State<EditorScreen> {
         content: Text(t['basicProfileToastLine1']!),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 92),
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
