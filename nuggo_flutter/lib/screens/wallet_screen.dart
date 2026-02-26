@@ -810,30 +810,39 @@ class _CardTile extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    ...card.tags.take(3).map(
-                          (tag) => Padding(
-                            padding: const EdgeInsets.only(right: 5),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.07),
-                                borderRadius: BorderRadius.circular(7),
-                              ),
-                              child: Text(
-                                tag,
-                                style: GoogleFonts.manrope(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white70,
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            ...card.tags.take(3).map(
+                                  (tag) => Padding(
+                                    padding: const EdgeInsets.only(right: 5),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.07),
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                      child: Text(
+                                        tag,
+                                        style: GoogleFonts.manrope(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
+                          ],
                         ),
-                    const Spacer(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     Text(
                       _timeAgo(card.receivedAt),
                       style: GoogleFonts.manrope(

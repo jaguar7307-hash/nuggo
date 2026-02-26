@@ -64,7 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   /// ?? 7? ?? ?? (?? ?????)
   static const List<double> _weekTrend = [12, 18, 14, 22, 28, 24, 30];
-  /// ?? 1?? ? ?? ?? ?? (??? ?? ??)
+  /// ?? 1시간 전 ?? ?? ?? (??? ?? ??)
   final bool _hasRecentView = true;
 
   late List<_RecentSendItem> _recentSends;
@@ -1253,7 +1253,7 @@ class _CrmExpansionTileState extends State<_CrmExpansionTile> {
               decoration: InputDecoration(
                 hintText: widget.language == 'en'
                     ? 'Short meeting note...'
-                    : '?? ?? ??? ??? ???',
+                    : '짧은 미팅 메모를 입력해 주세요',
                 hintStyle: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFF64748B)),
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.06),
