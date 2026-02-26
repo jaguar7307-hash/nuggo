@@ -5,7 +5,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/card_data.dart';
 import 'business_card.dart';
-import '../debug_scroll_log.dart';
 
 String _normalizePhone(String raw) {
   return raw
@@ -31,18 +30,6 @@ class DigitalCard extends StatelessWidget {
     String type,
     String value,
   ) async {
-    // #region agent log
-    debugScrollLog(
-      location: 'digital_card.dart:_handleAction',
-      message: 'action_received',
-      data: {
-        'type': type,
-        'valueEmpty': value.isEmpty,
-      },
-      hypothesisId: 'H4',
-      runId: 'run1',
-    );
-    // #endregion
     if (value.isEmpty && type != 'share') return;
 
     if (type == 'share') {
@@ -56,15 +43,6 @@ class DigitalCard extends StatelessWidget {
               '명함: ${data.fullName.isNotEmpty ? data.fullName : "NUGGO"}',
         ),
       );
-      // #region agent log
-      debugScrollLog(
-        location: 'digital_card.dart:_handleAction',
-        message: 'share_invoked',
-        data: {'type': type},
-        hypothesisId: 'H4',
-        runId: 'run1',
-      );
-      // #endregion
       return;
     }
 
@@ -111,25 +89,7 @@ class DigitalCard extends StatelessWidget {
     if (uri != null) {
       try {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
-        // #region agent log
-        debugScrollLog(
-          location: 'digital_card.dart:_handleAction',
-          message: 'external_launch_success',
-          data: {'type': type, 'uriScheme': uri.scheme},
-          hypothesisId: 'H4',
-          runId: 'run1',
-        );
-        // #endregion
       } catch (_) {
-        // #region agent log
-        debugScrollLog(
-          location: 'digital_card.dart:_handleAction',
-          message: 'external_launch_failed',
-          data: {'type': type},
-          hypothesisId: 'H4',
-          runId: 'run1',
-        );
-        // #endregion
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('링크를 열 수 없습니다.')),

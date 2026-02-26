@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/card_data.dart';
 import '../constants/theme.dart';
-import '../debug_scroll_log.dart';
 
 /// 명함 비율 상수 (242.55 : 388.08 = 1 : 1.6)
 const double kBusinessCardAspectWidth = 242.55;
@@ -56,26 +55,6 @@ class BusinessCard extends StatelessWidget {
         : Colors.white.withValues(alpha: 0.8);
     final hasProfileImage =
         data.profileImage != null && data.profileImage!.isNotEmpty;
-    // #region agent log
-    debugScrollLog(
-      location: 'business_card.dart:build',
-      message: 'card_render_state',
-      data: {
-        'screenW': MediaQuery.of(context).size.width,
-        'screenH': MediaQuery.of(context).size.height,
-        'hasProfileImage': hasProfileImage,
-        'phoneEnabled': data.phone.isNotEmpty,
-        'smsEnabled': data.sms.isNotEmpty,
-        'emailEnabled': data.email.isNotEmpty,
-        'websiteEnabled': data.website.isNotEmpty,
-        'kakaoEnabled': data.kakao.isNotEmpty,
-        'portfolioEnabled': ((data.portfolioUrl ?? '').isNotEmpty ||
-            (data.portfolioFile ?? '').isNotEmpty),
-      },
-      hypothesisId: 'H2_H3',
-      runId: 'run1',
-    );
-    // #endregion
 
     return SizedBox.expand(
       child: Container(
@@ -279,7 +258,8 @@ class BusinessCard extends StatelessWidget {
   }) {
     final isLight = _isLightBackground;
     final iconColor = isLight ? Colors.black87 : Colors.white;
-    final iconsEnabled = forceActionIconsEnabled || onAction != null;
+    final bool alwaysLookEnabled = forceActionIconsEnabled;
+    final bool isInteractive = onAction != null;
 
     return Align(
       alignment: Alignment.bottomCenter,
@@ -295,7 +275,8 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.phone,
                     label: 'PHONE',
-                    enabled: iconsEnabled && data.phone.isNotEmpty,
+                    enabled: alwaysLookEnabled ||
+                        (isInteractive && data.phone.isNotEmpty),
                     color: iconColor,
                     onTap: () => _handleTap('call', data.phone),
                   ),
@@ -304,7 +285,9 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.chat_bubble,
                     label: 'MESSAGE',
-                    enabled: iconsEnabled && (data.sms.isNotEmpty || data.phone.isNotEmpty),
+                    enabled: alwaysLookEnabled ||
+                        (isInteractive &&
+                            (data.sms.isNotEmpty || data.phone.isNotEmpty)),
                     color: iconColor,
                     onTap: () => _handleTap(
                       'sms',
@@ -316,7 +299,8 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.mail,
                     label: 'EMAIL',
-                    enabled: iconsEnabled && data.email.isNotEmpty,
+                    enabled: alwaysLookEnabled ||
+                        (isInteractive && data.email.isNotEmpty),
                     color: iconColor,
                     onTap: () => _handleTap('mail', data.email),
                   ),
@@ -331,7 +315,8 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.language,
                     label: 'WEBSITE',
-                    enabled: iconsEnabled && data.website.isNotEmpty,
+                    enabled: alwaysLookEnabled ||
+                        (isInteractive && data.website.isNotEmpty),
                     color: iconColor,
                     onTap: () => _handleTap('website', data.website),
                   ),
@@ -340,7 +325,8 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.chat_outlined,
                     label: 'KAKAO',
-                    enabled: iconsEnabled && data.kakao.isNotEmpty,
+                    enabled: alwaysLookEnabled ||
+                        (isInteractive && data.kakao.isNotEmpty),
                     color: iconColor,
                     onTap: () => _handleTap('kakao', data.kakao),
                   ),
@@ -349,7 +335,7 @@ class BusinessCard extends StatelessWidget {
                   child: _ActionIcon(
                     icon: Icons.share,
                     label: 'SNS',
-                    enabled: iconsEnabled,
+                    enabled: alwaysLookEnabled || isInteractive,
                     color: iconColor,
                     onTap: () => _handleTap('share', ''),
                   ),
@@ -360,9 +346,10 @@ class BusinessCard extends StatelessWidget {
             _ActionIcon(
               icon: Icons.folder_open,
               label: '포트폴리오',
-              enabled: iconsEnabled &&
-                  ((data.portfolioUrl ?? '').isNotEmpty ||
-                      (data.portfolioFile ?? '').isNotEmpty),
+              enabled: alwaysLookEnabled ||
+                  (isInteractive &&
+                      ((data.portfolioUrl ?? '').isNotEmpty ||
+                          (data.portfolioFile ?? '').isNotEmpty)),
               color: iconColor,
               onTap: () => _handleTap(
                 'portfolio',
@@ -443,20 +430,7 @@ class _ActionIcon extends StatelessWidget {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: enabled
-          ? () {
-              // #region agent log
-              debugScrollLog(
-                location: 'business_card.dart:_ActionIcon.onTap',
-                message: 'action_icon_tapped',
-                data: {'label': label, 'enabled': enabled},
-                hypothesisId: 'H4_H5',
-                runId: 'run1',
-              );
-              // #endregion
-              onTap();
-            }
-          : null,
+      onTap: enabled ? onTap : null,
       child: Align(
         alignment: Alignment.center,
         child: Padding(
