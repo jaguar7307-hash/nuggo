@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -1395,11 +1397,9 @@ class _MiniCardPreview extends StatelessWidget {
         color: isHex ? _parseThemeColor(theme) : null,
         image: !isHex && theme.isNotEmpty
             ? DecorationImage(
-                image: ResizeImage(
-                  NetworkImage(theme),
-                  width: 128,
-                  height: 192,
-                ),
+                image: theme.startsWith('http')
+                    ? ResizeImage(NetworkImage(theme), width: 128, height: 192)
+                    : FileImage(File(theme)) as ImageProvider,
                 fit: BoxFit.cover,
               )
             : null,

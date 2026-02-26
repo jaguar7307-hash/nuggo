@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../constants/theme.dart';
 import '../providers/app_provider.dart';
 import '../models/card_data.dart';
 import '../widgets/nuggo_logo.dart';
@@ -350,7 +352,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
                   color: isHex ? _parseHex(theme) : const Color(0xFF1a1c1e),
                   image: !isHex
                       ? DecorationImage(
-                          image: NetworkImage(theme),
+                          image: theme.startsWith('http')
+                              ? NetworkImage(theme)
+                              : FileImage(File(theme)) as ImageProvider,
                           fit: BoxFit.cover,
                           alignment: Alignment.center,
                         )
@@ -380,22 +384,18 @@ class _PreviewScreenState extends State<PreviewScreen> {
                       child: Row(
                         children: [
                           Opacity(
-                            opacity: 0.8,
+                            opacity: 0.9,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 NuggoLogo(
                                   size: 18,
-                                  color: isLight
-                                      ? NuggoLogo.defaultColor
-                                      : Colors.white,
+                                  color: AppTheme.logoPrimary,
                                 ),
                                 const SizedBox(width: 5),
-                                NuggoTextLogo(
+                                const NuggoTextLogo(
                                   fontSize: 13,
-                                  variant: isLight
-                                      ? LogoVariant.brand
-                                      : LogoVariant.white,
+                                  variant: LogoVariant.brand,
                                 ),
                               ],
                             ),
