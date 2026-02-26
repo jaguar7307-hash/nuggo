@@ -295,12 +295,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.send,
                     label: _tr(language, '보내기', 'Send'),
                     filled: true,
-                    onTap: () => _shareCard(context, provider, selected),
+                    onTap: () =>
+                        _showSendSheet(context, provider, selected, language),
                   ),
                   _TopActionButton(
                     icon: Icons.share,
                     label: _tr(language, '공유', 'Share'),
                     onTap: () => _shareCard(context, provider, selected),
+                  ),
+                  _TopActionButton(
+                    icon: Icons.nfc,
+                    label: 'NFC',
+                    onTap: () => _showNfcComingSoon(context, language),
                   ),
                   _TopActionButton(
                     icon: Icons.qr_code_2,
@@ -967,6 +973,140 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showNfcComingSoon(BuildContext context, String language) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _tr(language, 'NFC 기능은 준비 중입니다 🔮', 'NFC feature coming soon 🔮'),
+        ),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showSendSheet(
+    BuildContext context,
+    AppProvider provider,
+    Profile selected,
+    String language,
+  ) {
+    String url = selected.data.shareLink.trim();
+    if (url.isEmpty) url = 'https://nuggo.me';
+    if (!url.startsWith('http')) url = 'https://$url';
+
+    final name = selected.data.fullName.isEmpty
+        ? selected.name
+        : selected.data.fullName;
+
+    void recordSend(String method) {
+      setState(() {
+        _recentSends.insert(
+          0,
+          _RecentSendItem(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            name: name,
+            method: method,
+            time: '방금 전',
+            revisitCount: 0,
+            viewCount: 0,
+            phone: selected.data.phone,
+          ),
+        );
+      });
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Text(
+                  _tr(language, '명함 보내기', 'Send Card'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _SendOption(
+                  icon: Icons.chat_bubble,
+                  iconColor: const Color(0xFFFFE000),
+                  iconBg: const Color(0xFF3C1E1E),
+                  label: _tr(language, '카카오톡으로 보내기', 'Send via KakaoTalk'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    recordSend('카카오톡');
+                    final kakaoUrl = Uri.parse(
+                      'kakaolink://send?text=${Uri.encodeComponent(url)}',
+                    );
+                    final fallback = Uri.parse('https://accounts.kakao.com');
+                    if (!await launchUrl(
+                      kakaoUrl,
+                      mode: LaunchMode.externalApplication,
+                    )) {
+                      await launchUrl(fallback,
+                          mode: LaunchMode.externalApplication);
+                    }
+                  },
+                ),
+                _SendOption(
+                  icon: Icons.sms,
+                  iconColor: Colors.white,
+                  iconBg: Colors.green.shade700,
+                  label: _tr(language, '문자(SMS)로 보내기', 'Send via SMS'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    recordSend('문자(SMS)');
+                    final body = Uri.encodeComponent(
+                        '${_tr(language, '내 명함:', 'My card:')} $url');
+                    final smsUri = Uri.parse('sms:?body=$body');
+                    await launchUrl(smsUri,
+                        mode: LaunchMode.externalApplication);
+                  },
+                ),
+                _SendOption(
+                  icon: Icons.email,
+                  iconColor: Colors.white,
+                  iconBg: Colors.red.shade600,
+                  label: _tr(language, '이메일로 보내기', 'Send via Email'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    recordSend('이메일');
+                    final subject = Uri.encodeComponent(
+                        _tr(language, '명함: $name', 'Card: $name'));
+                    final body = Uri.encodeComponent(url);
+                    final mailUri =
+                        Uri.parse('mailto:?subject=$subject&body=$body');
+                    await launchUrl(mailUri,
+                        mode: LaunchMode.externalApplication);
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1642,3 +1782,47 @@ class _RecentSendTile extends StatelessWidget {
   }
 }
 
+/// 바텀시트 내 앱 선택 행
+class _SendOption extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String label;
+  final VoidCallback onTap;
+
+  const _SendOption({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 15),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
