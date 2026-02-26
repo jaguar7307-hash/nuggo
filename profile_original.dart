@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -76,20 +76,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _RecentSendItem(
         id: '1',
         name: 'David Chen',
-        method: 'NFC 공유 시도',
-        time: '2시간 전',
+        method: 'NFC ??? ??',
+        time: '2? ?',
         revisitCount: 4,
         viewCount: 37,
         phone: '010-1234-5678',
         viewedWithin24h: true,
         downloadedPdfWithin24h: true,
-        memo: 'A사 거래 임박',
+        memo: 'A? ??? ??',
       ),
       _RecentSendItem(
         id: '2',
         name: 'Sarah Jenkins',
-        method: '카카오톡 공유',
-        time: '1시간 전',
+        method: '?????? ??',
+        time: '1?? ?',
         revisitCount: 2,
         viewCount: 31,
         phone: '010-9876-5432',
@@ -97,13 +97,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       _RecentSendItem(
         id: '3',
-        name: '홍길동',
-        method: '공유 시도',
-        time: '방금 전',
+        name: '???',
+        method: '?? ??',
+        time: '??',
         revisitCount: 5,
         viewCount: 29,
         phone: '010-2222-3333',
-        memo: '미팅 메모 작성',
+        memo: '??? ?? ??',
       ),
     ];
   }
@@ -138,7 +138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionLabel(_tr(language, '프로필', 'PROFILES')),
+                  _buildSectionLabel(_tr(language, '???', 'PROFILES')),
                   const SizedBox(height: 12),
                   _buildProfilesRow(context, provider, profiles),
                   const SizedBox(height: 20),
@@ -169,7 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icon(Icons.contact_page, size: 96, color: Colors.grey.shade600),
             const SizedBox(height: 20),
             Text(
-              _tr(language, '저장된 명함이 없습니다', 'No saved cards yet'),
+              _tr(language, '??? ??? ????', 'No saved cards yet'),
               style: GoogleFonts.manrope(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -180,7 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text(
               _tr(
                 language,
-                '에디터에서 명함을 만들어 보세요',
+                '????? ???? ??? ???',
                 'Create a profile in the editor',
               ),
               style: GoogleFonts.manrope(fontSize: 14, color: _textMuted),
@@ -193,7 +193,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
               ),
-              child: Text(_tr(language, '에디터로 가기', 'Go to Editor')),
+              child: Text(_tr(language, '???? ??', 'Go to Editor')),
             ),
           ],
         ),
@@ -335,14 +335,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   _TopActionButton(
                     icon: Icons.send,
-                    label: _tr(language, '보내기', 'Send'),
+                    label: _tr(language, '???', 'Send'),
                     filled: true,
                     onTap: () =>
                         _showSendSheet(context, provider, selected, language),
                   ),
                   _TopActionButton(
                     icon: Icons.share,
-                    label: _tr(language, '공유', 'Share'),
+                    label: _tr(language, '??', 'Share'),
                     onTap: () => _shareCard(context, provider, selected),
                   ),
                   _TopActionButton(
@@ -359,11 +359,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Expanded(
                   child: _ViewsSendsBlock(
                     icon: Icons.visibility,
-                    label: _tr(language, '조회', 'Views'),
+                    label: _tr(language, '??', 'Views'),
                     value: _formatCount(views),
                     subtitle: _tr(
                       language,
-                      '최근 24h ↑ 즉시 팔로업',
+                      '?? 24h ? ?? ???',
                       'Last 24h ? Follow up',
                     ),
                     subtitleColor: Colors.green.shade400,
@@ -375,9 +375,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Expanded(
                   child: _ViewsSendsBlock(
                     icon: Icons.send,
-                    label: _tr(language, '공유', 'Sends'),
+                    label: _tr(language, '??', 'Sends'),
                     value: _formatCount(sends),
-                    subtitle: _tr(language, '공유전파 추적', 'Share tracking'),
+                    subtitle: _tr(language, '????? ??', 'Share tracking'),
                     subtitleColor: const Color(0xFF94A3B8),
                     subtitleIcon: Icons.trending_up,
                     compact: true,
@@ -426,7 +426,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildInsightSection(int views, int sends, String language) {
     final weekLabels = language == 'en'
         ? const ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-        : const ['월', '화', '수', '목', '금', '토', '일'];
+        : const ['?', '?', '?', '?', '?', '?', '?'];
     final maxY = _weekTrend.reduce((a, b) => a > b ? a : b).toDouble();
     final spots = _weekTrend.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList();
 
@@ -437,7 +437,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: _buildSectionLabel(_tr(language, '인사이트 대시', 'INSIGHT DASHBOARD')),
+              child: _buildSectionLabel(_tr(language, '?? ????', 'INSIGHT DASHBOARD')),
             ),
             if (_hasRecentView)
               Container(
@@ -450,10 +450,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('닫기', style: GoogleFonts.manrope(fontSize: 12)),
+                    Text('??', style: GoogleFonts.manrope(fontSize: 12)),
                     const SizedBox(width: 4),
                     Text(
-                      _tr(language, '반응 뜨거워!', 'Hot reaction!'),
+                      _tr(language, '??? ??!', 'Hot reaction!'),
                       style: GoogleFonts.manrope(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -478,38 +478,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _buildInsightDashboardRow(
                 language,
-                dataLabel: _tr(language, '최근 24h 조회', '24h views'),
+                dataLabel: _tr(language, '?? 24h ??', '24h views'),
                 dataValue: '${views ~/ 10 + 8}',
-                meaning: _tr(language, '핫 리드 발견', 'Hot leads'),
-                action: _tr(language, '즉시 팔로업', 'Follow up'),
+                meaning: _tr(language, '?? ???? ??', 'Hot leads'),
+                action: _tr(language, '?? ???', 'Follow up'),
               ),
               const SizedBox(height: 10),
               _buildInsightDashboardRow(
                 language,
-                dataLabel: _tr(language, 'PDF 다운로드', 'PDF downloads'),
+                dataLabel: _tr(language, '??? ????', 'PDF downloads'),
                 dataValue: '${sends ~/ 5 + 3}',
-                meaning: _tr(language, '제안 관심', 'Proposal interest'),
-                action: _tr(language, '맞춤 제안서', 'Custom proposal'),
+                meaning: _tr(language, '?? ???', 'Proposal interest'),
+                action: _tr(language, '?? ??? ??', 'Custom proposal'),
               ),
               const SizedBox(height: 10),
               _buildInsightDashboardRow(
                 language,
-                dataLabel: _tr(language, '공유 전파', 'Shares'),
+                dataLabel: _tr(language, '?? ?? ??', 'Shares'),
                 dataValue: '${sends ~/ 8 + 2}',
-                meaning: _tr(language, '바이럴 가능성', 'Viral potential'),
-                action: _tr(language, '감사 보내기', 'Thank & reward'),
+                meaning: _tr(language, '?? ????? ??', 'Viral potential'),
+                action: _tr(language, '?? ??????', 'Thank & reward'),
               ),
               const SizedBox(height: 10),
               _buildInsightDashboardRow(
                 language,
-                dataLabel: _tr(language, '체류시간·클릭', 'Dwell & clicks'),
-                dataValue: _tr(language, '포트폴리오 1위', 'Portfolio #1'),
-                meaning: _tr(language, '인사이트 필요', 'Need insight'),
-                action: _tr(language, '콘텐츠 개선', 'Improve content'),
+                dataLabel: _tr(language, '??????? ??', 'Dwell & clicks'),
+                dataValue: _tr(language, '????? 1?', 'Portfolio #1'),
+                meaning: _tr(language, '?? ?? ???', 'Need insight'),
+                action: _tr(language, '??? ??', 'Improve content'),
               ),
               const SizedBox(height: 16),
               Text(
-                _tr(language, '최근 7일 트렌드', 'Last 7 days trend'),
+                _tr(language, '?? 7? ?? ??', 'Last 7 days trend'),
                 style: _insightLabelStyle(),
               ),
               const SizedBox(height: 8),
@@ -685,7 +685,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _tr(language, '오늘 팔로업 추천', 'Today follow-up picks'),
+          _tr(language, '??? ?? ??? ??', 'Today follow-up picks'),
           style: GoogleFonts.manrope(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -700,7 +700,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    '${lead.name} 님 ${lead.viewCount}회 조회',
+                    '${lead.name} ? ?? ${lead.viewCount}',
                     style: GoogleFonts.manrope(
                       fontSize: 11,
                       color: Colors.white.withValues(alpha: 0.9),
@@ -730,7 +730,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionLabel(_tr(language, '스마트 CRM', 'SMART CRM')),
+        _buildSectionLabel(_tr(language, '?? ?? ? ?? ??', 'SMART CRM')),
         const SizedBox(height: 12),
         ..._recentSends.map((item) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -740,7 +740,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onViewed: () {
               setState(() {
                 item.viewedWithin24h = true;
-                item.time = '방금 전';
+                item.time = '?? ?';
               });
             },
             onMemoSaved: (memo) {
@@ -766,7 +766,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionLabel(_tr(language, 'QR & 인쇄', 'QR & PRINT')),
+        _buildSectionLabel(_tr(language, 'QR & ???', 'QR & PRINT')),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(20),
@@ -802,7 +802,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               FilledButton.icon(
                 onPressed: () => _generateAndShowPdf(context, provider, selected, data, url, language),
                 icon: const Icon(Icons.picture_as_pdf_outlined, size: 20),
-                label: Text(_tr(language, '인쇄용 PDF 생성', 'Generate PDF for Print')),
+                label: Text(_tr(language, '???? PDF ??', 'Generate PDF for Print')),
                 style: FilledButton.styleFrom(
                   backgroundColor: _deepBlue,
                   foregroundColor: Colors.white,
@@ -827,7 +827,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final doc = pw.Document();
     final name = data.fullName.isEmpty ? selected.name : data.fullName;
     final company = data.companyName;
-    final contact = [data.phone, data.email].where((e) => e.isNotEmpty).join(' � ');
+    final contact = [data.phone, data.email].where((e) => e.isNotEmpty).join(' ? ');
 
     doc.addPage(
       pw.Page(
@@ -836,7 +836,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             pw.Text(
-              _tr(language, '매장 미니 배너 (A4)', 'Store Mini Banner (A4)'),
+              _tr(language, '?? ??? ?? ?? (A4 ???)', 'Store Mini Banner (A4)'),
               style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 12),
@@ -878,7 +878,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             pw.SizedBox(height: 24),
             pw.Text(
-              _tr(language, '명함 시트', 'Card Sheet'),
+              _tr(language, '??? ?? ??', 'Card Sheet'),
               style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 8),
@@ -906,7 +906,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: pw.Text(
                 _tr(
                   language,
-                  '명함 QR 코드를 공유해 보세요',
+                  '? QR? ???? ?? ??? ?????',
                   'Scan this QR to view full details',
                 ),
                 style: pw.TextStyle(
@@ -929,7 +929,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (_recentSends.isNotEmpty) {
         setState(() {
           _recentSends.first.downloadedPdfWithin24h = true;
-          _recentSends.first.time = '방금 전';
+          _recentSends.first.time = '?? ?';
         });
       }
     }
@@ -954,7 +954,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(_tr(language, '명함 QR 코드', 'Card QR Code')),
+        title: Text(_tr(language, '?? QR ??', 'Card QR Code')),
         content: SizedBox(
           width: 300,
           child: SingleChildScrollView(
@@ -997,7 +997,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(_tr(language, '닫기', 'Close')),
+            child: Text(_tr(language, '??', 'Close')),
           ),
         ],
       ),
@@ -1008,7 +1008,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          _tr(language, 'NFC 기능은 준비 중입니다 🔮', 'NFC feature coming soon 🔮'),
+          _tr(language, 'NFC ??? ?? ???? ??', 'NFC feature coming soon ??'),
         ),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
@@ -1038,7 +1038,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             id: DateTime.now().millisecondsSinceEpoch.toString(),
             name: name,
             method: method,
-            time: '방금 전',
+            time: '?? ?',
             revisitCount: 0,
             viewCount: 0,
             phone: selected.data.phone,
@@ -1067,8 +1067,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _RecentSendItem(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           name: selected.data.fullName.isEmpty ? selected.name : selected.data.fullName,
-          method: '공유 시도',
-          time: '방금 전',
+          method: '?? ??',
+          time: '?? ?',
           revisitCount: 0,
           viewCount: 0,
           phone: selected.data.phone,
@@ -1082,7 +1082,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? selected.name
         : selected.data.fullName;
     final language = provider.settings.language;
-    final subject = _tr(language, '명함: $name', 'Card: $name');
+    final subject = _tr(language, '??: $name', 'Card: $name');
     SharePlus.instance.share(ShareParams(text: url, subject: subject));
   }
 
@@ -1210,7 +1210,7 @@ class _CrmExpansionTileState extends State<_CrmExpansionTile> {
                               border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
                             ),
                             child: Text(
-                              widget.language == 'en' ? 'Deal close' : '거래 임박',
+                              widget.language == 'en' ? '?? Deal close' : '?? ?? ??',
                               style: GoogleFonts.manrope(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w700,
@@ -1240,9 +1240,9 @@ class _CrmExpansionTileState extends State<_CrmExpansionTile> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _quickTagChip('거래임박'),
-                _quickTagChip('거래임박'),
-                _quickTagChip('거래임박'),
+                _quickTagChip('????'),
+                _quickTagChip('????'),
+                _quickTagChip('????'),
               ],
             ),
             const SizedBox(height: 8),
@@ -1253,7 +1253,7 @@ class _CrmExpansionTileState extends State<_CrmExpansionTile> {
               decoration: InputDecoration(
                 hintText: widget.language == 'en'
                     ? 'Short meeting note...'
-                    : '?? ?? ??? ??? ???',
+                    : '?? ?? ??? ?????',
                 hintStyle: GoogleFonts.manrope(fontSize: 12, color: const Color(0xFF64748B)),
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.06),
@@ -1272,14 +1272,14 @@ class _CrmExpansionTileState extends State<_CrmExpansionTile> {
                   widget.onMemoSaved(_memoController.text);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(widget.language == 'en' ? 'Memo saved.' : '메모가 저장되었습니다.'),
+                      content: Text(widget.language == 'en' ? 'Memo saved.' : '??? ???????.'),
                       behavior: SnackBarBehavior.floating,
                       backgroundColor: AppTheme.primary,
                     ),
                   );
                 },
                 child: Text(
-                  widget.language == 'en' ? 'Save memo' : '메모 저장',
+                  widget.language == 'en' ? 'Save memo' : '?? ??',
                   style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
                 ),
               ),
@@ -1385,7 +1385,7 @@ class _MiniCardPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = data.theme;
     final isHex = theme.startsWith('#');
-    final name = profileSaveName.trim().isEmpty ? '명함' : profileSaveName;
+    final name = profileSaveName.trim().isEmpty ? '??' : profileSaveName;
 
     return Container(
       width: double.infinity,
