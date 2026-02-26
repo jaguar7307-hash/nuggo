@@ -25,11 +25,13 @@ class EditorScreen extends StatefulWidget {
   State<EditorScreen> createState() => _EditorScreenState();
 }
 
-class _EditorScreenState extends State<EditorScreen> {
+class _EditorScreenState extends State<EditorScreen>
+    with WidgetsBindingObserver {
   static const Color _accentOrange = Color(0xFFFF8A3D);
   ThemeType _activeThemeTab = ThemeType.professional;
   final ScrollController _editorScrollController = ScrollController();
   final ScrollController _profilesScrollController = ScrollController();
+  double _prevKeyboardH = 0.0;
   final GlobalKey _backgroundSectionKey = GlobalKey();
   final GlobalKey _languageModeToggleKey = GlobalKey();
   OverlayEntry? _languageModeOverlay;
@@ -68,6 +70,7 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _precacheThemeImages();
@@ -176,6 +179,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _languageModeOverlay?.remove();
     _languageModeOverlay = null;
     _editorScrollController.dispose();
@@ -185,6 +189,31 @@ class _EditorScreenState extends State<EditorScreen> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    // 키보드가 올라오는 타이밍에 포커스된 입력창이 부드럽게 보이도록 스크롤
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final keyboardH = MediaQuery.of(context).viewInsets.bottom;
+      if (keyboardH > _prevKeyboardH + 50) {
+        // 키보드가 의미있게 상승 → 포커스된 필드로 부드럽게 스크롤
+        final focusCtx = FocusManager.instance.primaryFocus?.context;
+        if (focusCtx != null && focusCtx.mounted) {
+          Scrollable.ensureVisible(
+            focusCtx,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            alignment: 0.3,
+            alignmentPolicy:
+                ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+          );
+        }
+      }
+      _prevKeyboardH = keyboardH;
+    });
   }
 
   void _showLanguageModeToastNearToggle(String text) {
