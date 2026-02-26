@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants/theme.dart';
+import '../debug_scroll_log.dart';
 
 // ═══════════════════════════════════════════════════════════
 // 모델
@@ -246,7 +247,14 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    // #region agent log
+    debugScrollLog(
+      location: 'wallet_screen.dart:build',
+      message: 'wallet_build',
+      data: {'scrollWidget': 'ListView.builder', 'physics': 'default'},
+      hypothesisId: 'H1',
+    );
+    // #endregion
     return GestureDetector(
       // 배경 탭 시 키보드 내리기
       onTap: () => FocusScope.of(context).unfocus(),
@@ -272,10 +280,21 @@ class _WalletScreenState extends State<WalletScreen> {
                 child: _filteredCards.isEmpty
                     ? _buildEmptyState(isDark)
                     : ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        cacheExtent: 400,
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                         itemCount: _filteredCards.length,
-                        itemBuilder: (_, i) =>
-                            _buildCardTile(_filteredCards[i], isDark),
+                        itemBuilder: (_, i) {
+                          // #region agent log
+                          debugScrollLog(
+                            location: 'wallet_screen.dart:itemBuilder',
+                            message: 'wallet_item_build',
+                            data: {'index': i},
+                            hypothesisId: 'H4_H5',
+                          );
+                          // #endregion
+                          return _buildCardTile(_filteredCards[i], isDark);
+                        },
                       ),
               ),
             ],

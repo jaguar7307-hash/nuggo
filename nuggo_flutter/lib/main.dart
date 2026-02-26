@@ -1,4 +1,5 @@
-import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -64,26 +65,26 @@ void _showQrDialog(BuildContext context, AppProvider provider) {
   );
 }
 
-void main() {
-  runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await SharedPreferences.getInstance();
-    debugPaintBaselinesEnabled = false;
-    debugPaintSizeEnabled = false;
-    GoogleFonts.config.allowRuntimeFetching = true;
-    FlutterError.onError = (details) {
-      FlutterError.presentError(details);
-      debugPrint('FlutterError: ${details.exception}');
-    };
-    runApp(
-      ChangeNotifierProvider(
-        create: (_) => AppProvider()..initialize(),
-        child: const MyApp(),
-      ),
-    );
-  }, (error, stack) {
-    debugPrint('Zone error: $error\n$stack');
-  });
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SharedPreferences.getInstance();
+  debugPaintBaselinesEnabled = false;
+  debugPaintSizeEnabled = false;
+  GoogleFonts.config.allowRuntimeFetching = true;
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('FlutterError: ${details.exception}');
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Platform error: $error\n$stack');
+    return true;
+  };
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AppProvider()..initialize(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 /// 첫 프레임이 폰에서 그려지는지 확인용 — 밝은 배경이면 Flutter 동작, 검정이면 엔진/설정 이슈
@@ -169,22 +170,37 @@ class _MainScreenState extends State<MainScreen> {
   static const Color _accentOrange = Color(0xFFFF8A3D);
   final Set<int> _builtTabIndices = <int>{};
 
+  /// 빌드 중에는 상태를 변경하지 않음. 탭 전환 시에만 postFrame으로 인덱스 추가 (화면 반복/먹통 방지).
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final idx = _tabIndex(context.read<AppProvider>().activeView);
+    if (!_builtTabIndices.contains(idx)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _builtTabIndices.add(idx));
+      });
+    }
+  }
+
+  /// 첫 빌드 시 set이 비어 있으면 activeIndex만 사용(상태 변경 없음). 이후에는 _builtTabIndices 사용.
   List<Widget> _buildLazyTabChildren(int activeIndex) {
-    _builtTabIndices.add(activeIndex);
+    final indices = _builtTabIndices.isEmpty
+        ? <int>{activeIndex}
+        : _builtTabIndices;
     return [
-      _builtTabIndices.contains(0)
+      indices.contains(0)
           ? const ProfileScreen()
           : const SizedBox.shrink(),
-      _builtTabIndices.contains(1)
+      indices.contains(1)
           ? const EditorScreen()
           : const SizedBox.shrink(),
-      _builtTabIndices.contains(2)
+      indices.contains(2)
           ? const WalletScreen()
           : const SizedBox.shrink(),
-      _builtTabIndices.contains(3)
+      indices.contains(3)
           ? const AccountScreen()
           : const SizedBox.shrink(),
-      _builtTabIndices.contains(4)
+      indices.contains(4)
           ? const SettingsScreen()
           : const SizedBox.shrink(),
     ];
@@ -320,9 +336,7 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                         child: IndexedStack(
                           index: _tabIndex(activeView),
-                          children: _buildLazyTabChildren(
-                            _tabIndex(activeView),
-                          ),
+                          children: _buildLazyTabChildren(_tabIndex(activeView)),
                         ),
                       ),
                     ),

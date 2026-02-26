@@ -14,6 +14,7 @@ import '../models/profile.dart';
 import '../providers/app_provider.dart';
 import '../widgets/digital_card.dart';
 import '../widgets/business_card.dart' show kBusinessCardAspectRatio;
+import '../debug_scroll_log.dart';
 
 /// 최근 전송 항목 (CRM용)
 class _RecentSendItem {
@@ -122,11 +123,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final views = _mockViewCount(selected);
         final sends = _mockSendCount(selected);
 
+        // #region agent log
+        debugScrollLog(
+          location: 'profile_screen.dart:build',
+          message: 'profile_build',
+          data: {'scrollWidget': 'SingleChildScrollView', 'physics': 'default'},
+          hypothesisId: 'H1_H2',
+        );
+        // #endregion
         return Container(
           color: _bgDark,
           child: SafeArea(
             bottom: false,
-            child: SingleChildScrollView(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (n) {
+                // #region agent log
+                debugScrollLog(
+                  location: 'profile_screen.dart:scroll',
+                  message: 'scroll_event',
+                  data: {'depth': n.depth, 'position': n is ScrollUpdateNotification ? n.metrics.pixels : null},
+                  hypothesisId: 'H3',
+                );
+                // #endregion
+                return false;
+              },
+              child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,6 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildPrintSection(context, provider, selected, language),
                 ],
               ),
+            ),
             ),
           ),
         );

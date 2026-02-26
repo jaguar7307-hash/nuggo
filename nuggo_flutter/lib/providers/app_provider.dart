@@ -159,8 +159,8 @@ class AppProvider with ChangeNotifier {
       _hasBasicProfile = false;
       unawaited(_storage.setHasBasicProfile(false));
     }
+    await _restoreSession();
     notifyListeners();
-    unawaited(_restoreSession());
   }
 
   Future<void> _restoreSession() async {
@@ -169,15 +169,14 @@ class AppProvider with ChangeNotifier {
       _currentUser = user;
       if (_settings.biometrics && user.lockPin != null) _isAppLocked = true;
     } else {
-      await _loginAsGuest();
+      await _loginAsGuest(skipNotify: true);
     }
-    notifyListeners();
   }
 
   // Auth Methods
-  Future<void> _loginAsGuest() async {
+  Future<void> _loginAsGuest({bool skipNotify = false}) async {
     _currentUser = await _authService.loginAsGuest();
-    notifyListeners();
+    if (!skipNotify) notifyListeners();
   }
 
   Future<void> handleAuth({

@@ -17,6 +17,7 @@ import '../models/profile.dart';
 import '../constants/constants.dart';
 import '../constants/theme.dart';
 import '../widgets/business_card.dart';
+import '../debug_scroll_log.dart';
 
 class EditorScreen extends StatefulWidget {
   const EditorScreen({super.key});
@@ -268,6 +269,14 @@ class _EditorScreenState extends State<EditorScreen> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth;
+                  // #region agent log
+                  debugScrollLog(
+                    location: 'editor_screen.dart:build',
+                    message: 'editor_scroll_build',
+                    data: {'physics': 'AlwaysScrollableScrollPhysics+BouncingScrollPhysics'},
+                    hypothesisId: 'H1',
+                  );
+                  // #endregion
                   return SingleChildScrollView(
                     controller: _editorScrollController,
                     keyboardDismissBehavior:

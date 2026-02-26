@@ -2416,7 +2416,7 @@ class _NFCGuideScreenState extends State<_NFCGuideScreen> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
+        physics: const BouncingScrollPhysics(),
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         child: Column(

@@ -71,8 +71,8 @@ dependencies:
   # Path Provider
   path_provider: ^2.1.4
 
-  # File Picker (포트폴리오 첨부)
-  file_picker: ^8.0.0+1
+  # File Picker (포트폴리오 첨부) — 10.x: iOS FileUtils 충돌 완화
+  file_picker: ^10.3.10
   
   # Permission Handler
   permission_handler: ^12.0.1
