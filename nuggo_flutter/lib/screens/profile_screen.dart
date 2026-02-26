@@ -285,7 +285,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            // ??? · ?? · NFC ?? ?
+            // ??? ï¿½ ?? ï¿½ NFC ?? ?
             Center(
               child: Wrap(
                 alignment: WrapAlignment.center,
@@ -308,6 +308,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.nfc,
                     label: 'NFC',
                     onTap: () => _showNfcComingSoon(context, language),
+                  ),
+                  _TopActionButton(
+                    icon: Icons.qr_code_2,
+                    label: _tr(language, 'QR', 'QR'),
+                    onTap: () => _showQrDialog(context, selected, language),
+                    showDot: true,
+                  ),
+                  _TopActionButton(
+                    icon: Icons.visibility_outlined,
+                    label: _tr(language, 'Ã«Â¯Â¸Ã«Â¦Â¬Ã«Â³Â´ÃªÂ¸Â°', 'Preview'),
+                    onTap: () {
+                      provider.loadProfile(selected);
+                      provider.setActiveView(ViewType.preview);
+                    },
                   ),
                 ],
               ),
@@ -372,7 +386,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.send,
                     label: _tr(language, '??', 'Sends'),
                     value: _formatCount(sends),
-                    subtitle: _tr(language, '??·?? ??', 'Share tracking'),
+                    subtitle: _tr(language, '??ï¿½?? ??', 'Share tracking'),
                     subtitleColor: const Color(0xFF94A3B8),
                     subtitleIcon: Icons.trending_up,
                     compact: true,
@@ -491,13 +505,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 language,
                 dataLabel: _tr(language, '?? ?? ??', 'Shares'),
                 dataValue: '${sends ~/ 8 + 2}',
-                meaning: _tr(language, '?? ??·?? ??', 'Viral potential'),
-                action: _tr(language, '?? ??·???', 'Thank & reward'),
+                meaning: _tr(language, '?? ??ï¿½?? ??', 'Viral potential'),
+                action: _tr(language, '?? ??ï¿½???', 'Thank & reward'),
               ),
               const SizedBox(height: 10),
               _buildInsightDashboardRow(
                 language,
-                dataLabel: _tr(language, '????·?? ??', 'Dwell & clicks'),
+                dataLabel: _tr(language, '????ï¿½?? ??', 'Dwell & clicks'),
                 dataValue: _tr(language, '????? 1?', 'Portfolio #1'),
                 meaning: _tr(language, '?? ?? ???', 'Need insight'),
                 action: _tr(language, '??? ??', 'Improve content'),
@@ -695,7 +709,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    '${lead.name} · ?? ${lead.viewCount}',
+                    '${lead.name} ï¿½ ?? ${lead.viewCount}',
                     style: GoogleFonts.manrope(
                       fontSize: 11,
                       color: Colors.white.withValues(alpha: 0.9),
@@ -822,7 +836,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final doc = pw.Document();
     final name = data.fullName.isEmpty ? selected.name : data.fullName;
     final company = data.companyName;
-    final contact = [data.phone, data.email].where((e) => e.isNotEmpty).join(' · ');
+    final contact = [data.phone, data.email].where((e) => e.isNotEmpty).join(' ï¿½ ');
 
     doc.addPage(
       pw.Page(
