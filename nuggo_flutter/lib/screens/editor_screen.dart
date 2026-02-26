@@ -11,12 +11,12 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/app_provider.dart';
-import '../widgets/digital_card.dart';
 import '../models/card_data.dart';
 import '../models/profile.dart';
 import '../constants/constants.dart';
 import '../constants/theme.dart';
 import '../widgets/business_card.dart';
+import '../widgets/card_display.dart';
 import '../debug_scroll_log.dart';
 
 class EditorScreen extends StatefulWidget {
@@ -375,9 +375,13 @@ class _EditorScreenState extends State<EditorScreen> {
                           SizedBox(
                             width: cardW,
                             height: kBusinessCardAspectHeight,
-                            child: DigitalCard(
+                            child: CardDisplay(
+                              width: cardW,
+                              height: kBusinessCardAspectHeight,
                               data: data,
-                              isLarge: false,
+                              interactive: false,
+                              forceActionIconsEnabled: true,
+                              showShadow: false,
                             ),
                           ),
                           const SizedBox(height: 12),

@@ -615,8 +615,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                   ),
                   Positioned(
                     top: 14,
-                    left: 0,
-                    right: 0,
+                    left: 20,
+                    right: 200,
                     child: Center(
                       child: Opacity(
                         opacity: 0.75,

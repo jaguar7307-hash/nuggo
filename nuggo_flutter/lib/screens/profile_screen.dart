@@ -14,7 +14,7 @@ import '../models/profile.dart';
 import '../providers/app_provider.dart';
 import '../widgets/digital_card.dart';
 import '../widgets/business_card.dart' show kBusinessCardAspectRatio;
-import '../debug_scroll_log.dart';
+import '../widgets/card_display.dart';
 
 /// 최근 전송 항목 (CRM용)
 class _RecentSendItem {
@@ -123,28 +123,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final views = _mockViewCount(selected);
         final sends = _mockSendCount(selected);
 
-        // #region agent log
-        debugScrollLog(
-          location: 'profile_screen.dart:build',
-          message: 'profile_build',
-          data: {'scrollWidget': 'SingleChildScrollView', 'physics': 'default'},
-          hypothesisId: 'H1_H2',
-        );
-        // #endregion
         return Container(
           color: _bgDark,
           child: SafeArea(
             bottom: false,
             child: NotificationListener<ScrollNotification>(
               onNotification: (n) {
-                // #region agent log
-                debugScrollLog(
-                  location: 'profile_screen.dart:scroll',
-                  message: 'scroll_event',
-                  data: {'depth': n.depth, 'position': n is ScrollUpdateNotification ? n.metrics.pixels : null},
-                  hypothesisId: 'H3',
-                );
-                // #endregion
                 return false;
               },
               child: SingleChildScrollView(
@@ -280,118 +264,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final data = selected.data;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWideDesktop = constraints.maxWidth >= 560;
-        final isCompact = constraints.maxWidth < 380;
-        final cardWidthFactor = isWideDesktop ? 0.42 : (isCompact ? 0.46 : 0.50);
-        final cardWidth = constraints.maxWidth * cardWidthFactor;
-        // #region agent log
-        debugScrollLog(
-          location: 'profile_screen.dart:_buildTopSection',
-          message: 'layout_metrics',
-          data: {
-            'maxWidth': constraints.maxWidth,
-            'isWideDesktop': isWideDesktop,
-            'cardWidth': cardWidth,
-            'remainingAfterCardGap': constraints.maxWidth - cardWidth - 24 - 8,
-          },
-          hypothesisId: 'H1',
-          runId: 'run1',
-        );
-        // #endregion
-        return Stack(
-          clipBehavior: Clip.none,
+        final maxWidth = constraints.maxWidth;
+        final cardW = (maxWidth - 20).clamp(240.0, 340.0);
+        final cardH = cardW / kBusinessCardAspectRatio;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Center(
+              child: SizedBox(
+                width: cardW,
+                height: cardH,
+                child: CardDisplay(
+                  width: cardW,
+                  height: cardH,
+                  data: data,
+                  interactive: false, // 내 명함: 모양만 (기능은 미리보기에서만)
+                  forceActionIconsEnabled: true, // 회색 비활성처럼 보이지 않게
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _TopActionButton(
+                    icon: Icons.send,
+                    label: _tr(language, '보내기', 'Send'),
+                    filled: true,
+                    onTap: () => _shareCard(context, provider, selected),
+                  ),
+                  _TopActionButton(
+                    icon: Icons.share,
+                    label: _tr(language, '공유', 'Share'),
+                    onTap: () => _shareCard(context, provider, selected),
+                  ),
+                  _TopActionButton(
+                    icon: Icons.qr_code_2,
+                    label: _tr(language, 'QR', 'QR'),
+                    onTap: () => _showQrDialog(context, selected, language),
+                    showDot: true,
+                  ),
+                  _TopActionButton(
+                    icon: Icons.visibility_outlined,
+                    label: _tr(language, '미리보기', 'Preview'),
+                    onTap: () {
+                      provider.loadProfile(selected);
+                      provider.setActiveView(ViewType.preview);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(
-                  width: cardWidth,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildCompactCard(context, provider, data),
-                      const SizedBox(height: 8),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () {
-                            provider.loadProfile(selected);
-                            provider.setActiveView(ViewType.preview);
-                          },
-                          child: SizedBox(
-                            width: 80,
-                            height: 40,
-                            child: Center(
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.grey.shade400,
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.visibility_outlined,
-                                  color: Colors.grey.shade600,
-                                  size: 18,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: isCompact ? 12 : 24),
                 Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ViewsSendsBlock(
-                        icon: Icons.visibility,
-                        label: _tr(language, '조회', 'Views'),
-                        value: _formatCount(views),
-                        subtitle: _tr(language, '24h ↑ 즉시 팔로업', '24h ↑ Follow up'),
-                        subtitleColor: Colors.green.shade400,
-                        subtitleIcon: Icons.arrow_upward,
-                      ),
-                      const SizedBox(height: 24),
-                      _ViewsSendsBlock(
-                        icon: Icons.send,
-                        label: _tr(language, '발송', 'Sends'),
-                        value: _formatCount(sends),
-                        subtitle: _tr(language, '공유·전파 추적', 'Share tracking'),
-                        subtitleColor: const Color(0xFF94A3B8),
-                        subtitleIcon: Icons.trending_up,
-                      ),
-                    ],
+                  child: _ViewsSendsBlock(
+                    icon: Icons.visibility,
+                    label: _tr(language, '조회', 'Views'),
+                    value: _formatCount(views),
+                    subtitle: _tr(
+                      language,
+                      '최근 24h ↑ 즉시 팔로업',
+                      'Last 24h ↑ Follow up',
+                    ),
+                    subtitleColor: Colors.green.shade400,
+                    subtitleIcon: Icons.arrow_upward,
+                    compact: true,
                   ),
                 ),
-                SizedBox(width: isCompact ? 6 : 8),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _SideActionButton(
-                      icon: Icons.send,
-                      onTap: () => _shareCard(context, provider, selected),
-                      filled: true,
-                    ),
-                    const SizedBox(height: 16),
-                    _SideActionButton(
-                      icon: Icons.share,
-                      onTap: () => _shareCard(context, provider, selected),
-                    ),
-                    const SizedBox(height: 16),
-                    _SideActionButton(
-                      icon: Icons.qr_code_2,
-                      onTap: () => _showQrDialog(context, selected, language),
-                      showDot: true,
-                    ),
-                  ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _ViewsSendsBlock(
+                    icon: Icons.send,
+                    label: _tr(language, '발송', 'Sends'),
+                    value: _formatCount(sends),
+                    subtitle: _tr(language, '공유·전파 추적', 'Share tracking'),
+                    subtitleColor: const Color(0xFF94A3B8),
+                    subtitleIcon: Icons.trending_up,
+                    compact: true,
+                  ),
                 ),
               ],
             ),
@@ -1019,18 +975,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     AppProvider provider,
     Profile selected,
   ) {
-    // #region agent log
-    debugScrollLog(
-      location: 'profile_screen.dart:_shareCard',
-      message: 'share_button_tapped',
-      data: {
-        'selectedProfileId': selected.id,
-        'shareLinkEmpty': selected.data.shareLink.trim().isEmpty,
-      },
-      hypothesisId: 'H5',
-      runId: 'run1',
-    );
-    // #endregion
     setState(() {
       _recentSends.insert(
         0,
@@ -1458,6 +1402,7 @@ class _ViewsSendsBlock extends StatelessWidget {
   final String subtitle;
   final Color subtitleColor;
   final IconData subtitleIcon;
+  final bool compact;
 
   const _ViewsSendsBlock({
     required this.icon,
@@ -1466,10 +1411,14 @@ class _ViewsSendsBlock extends StatelessWidget {
     required this.subtitle,
     required this.subtitleColor,
     required this.subtitleIcon,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final valueSize = compact ? 22.0 : 28.0;
+    final labelSize = compact ? 10.0 : 11.0;
+    final subtitleSize = compact ? 8.5 : 9.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1489,7 +1438,7 @@ class _ViewsSendsBlock extends StatelessWidget {
               child: Text(
                 label,
                 style: GoogleFonts.manrope(
-                  fontSize: 11,
+                  fontSize: labelSize,
                   fontWeight: FontWeight.w600,
                   color: _textMuted,
                 ),
@@ -1503,7 +1452,7 @@ class _ViewsSendsBlock extends StatelessWidget {
         Text(
           value,
           style: GoogleFonts.manrope(
-            fontSize: 28,
+            fontSize: valueSize,
             fontWeight: FontWeight.w800,
             color: Colors.white,
             letterSpacing: -1,
@@ -1518,7 +1467,7 @@ class _ViewsSendsBlock extends StatelessWidget {
               child: Text(
                 subtitle,
                 style: GoogleFonts.manrope(
-                  fontSize: 9,
+                  fontSize: subtitleSize,
                   fontWeight: FontWeight.w600,
                   color: subtitleColor,
                 ),
@@ -1528,6 +1477,90 @@ class _ViewsSendsBlock extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _TopActionButton extends StatelessWidget {
+  static const Color _accentOrange = Color(0xFFFF8A3D);
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
+  final bool showDot;
+
+  const _TopActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.filled = false,
+    this.showDot = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = filled
+        ? _accentOrange
+        : const Color(0xFF101822).withValues(alpha: 0.4);
+    final border = filled
+        ? null
+        : Border.all(color: Colors.white.withValues(alpha: 0.2));
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          width: 74,
+          height: 52,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: border,
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 22, color: Colors.white),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      style: GoogleFonts.manrope(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white.withValues(alpha: 0.95),
+                        letterSpacing: 0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (showDot)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFF101822).withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1609,63 +1642,3 @@ class _RecentSendTile extends StatelessWidget {
   }
 }
 
-class _SideActionButton extends StatelessWidget {
-  static const Color _accentOrange = Color(0xFFFF8A3D);
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool showDot;
-  final bool filled;
-
-  const _SideActionButton({
-    required this.icon,
-    required this.onTap,
-    this.showDot = false,
-    this.filled = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: filled
-          ? _accentOrange
-          : const Color(0xFF101822).withValues(alpha: 0.4),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: filled
-                ? null
-                : Border.all(color: Colors.white.withValues(alpha: 0.2)),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Icon(icon, size: 30, color: Colors.white),
-              if (showDot)
-                Positioned(
-                  top: 14,
-                  right: 14,
-                  child: Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFF101822).withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
