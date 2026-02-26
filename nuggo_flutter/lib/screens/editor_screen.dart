@@ -34,8 +34,21 @@ class _EditorScreenState extends State<EditorScreen> {
   final GlobalKey _languageModeToggleKey = GlobalKey();
   OverlayEntry? _languageModeOverlay;
 
-  /// 카드 추가 버튼(+) 위로 충분히 간격을 두고 배치
-  static const double _saveButtonTopAlignWithPreviewIcon = 292.0;
+  // 플로팅 저장 버튼을 카드 우측 상단(추가 버튼 위)에 고정 배치하기 위한 계산 상수
+  static const double _profilesTopGap = 4.0;
+  static const double _profilesRowHeight = 52.0;
+  static const double _gapProfilesToPreview = 6.0;
+  static const double _previewLabelApproxHeight = 11.0;
+  static const double _previewLabelGap = 6.0;
+  static const double _previewIconGap = 12.0;
+  static const double _previewIconHeight = 48.0;
+  static const double _plusBtnHeight = 56.0;
+  static const double _sendBtnHeight = 44.0;
+  static const double _sendBtnGap = 10.0;
+  static const double _qrBtnHeight = 44.0;
+  static const double _qrBtnGap = 8.0;
+  static const double _saveBtnHeight = 64.0;
+  static const double _saveGapAbovePlus = 14.0;
   bool _scrollToBackgroundScheduled = false;
   bool _sloganDefaultSet = false;
   String? _pendingDefaultSlogan;
@@ -309,7 +322,7 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
               // 스크롤과 무관하게 화면 고정, 미리보기 아이콘과 나란히 (같은 세로 라인)
               Positioned(
-                top: _saveButtonTopAlignWithPreviewIcon,
+                top: _computeSaveButtonTop(),
                 right: 24,
                 child: RepaintBoundary(
                   child: _buildSaveFloatingButton(context, provider),
@@ -1105,6 +1118,26 @@ class _EditorScreenState extends State<EditorScreen> {
         ),
       ),
     );
+  }
+
+  double _computeSaveButtonTop() {
+    final previewColumnHeight =
+        _previewLabelApproxHeight +
+        _previewLabelGap +
+        kBusinessCardAspectHeight +
+        _previewIconGap +
+        _previewIconHeight;
+    final rightActionColumnHeight =
+        _plusBtnHeight + _sendBtnGap + _sendBtnHeight + _qrBtnGap + _qrBtnHeight;
+    final addButtonTopInsidePreview =
+        ((previewColumnHeight - rightActionColumnHeight) / 2).clamp(0.0, 200.0);
+
+    return _profilesTopGap +
+        _profilesRowHeight +
+        _gapProfilesToPreview +
+        addButtonTopInsidePreview -
+        _saveBtnHeight -
+        _saveGapAbovePlus;
   }
 
   TextStyle get _inputTextStyle => GoogleFonts.notoSansKr(
@@ -2150,25 +2183,10 @@ class _EditorScreenState extends State<EditorScreen> {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
       SnackBar(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(t['basicProfileToastLine1']!),
-            const SizedBox(height: 4),
-            Text(
-              t['basicProfileToastLine2']!,
-              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.9)),
-            ),
-          ],
-        ),
+        content: Text(t['basicProfileToastLine1']!),
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(
-          label: t['basicProfileToastAction']!,
-          onPressed: () {},
-        ),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 92),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
