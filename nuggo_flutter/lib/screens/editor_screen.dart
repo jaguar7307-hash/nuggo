@@ -34,8 +34,8 @@ class _EditorScreenState extends State<EditorScreen> {
   final GlobalKey _languageModeToggleKey = GlobalKey();
   OverlayEntry? _languageModeOverlay;
 
-  /// 명함 우상단(보내기 버튼 위)으로 배치
-  static const double _saveButtonTopAlignWithPreviewIcon = 360.0;
+  /// 카드 추가 버튼(+) 위로 충분히 간격을 두고 배치
+  static const double _saveButtonTopAlignWithPreviewIcon = 292.0;
   bool _scrollToBackgroundScheduled = false;
   bool _sloganDefaultSet = false;
   String? _pendingDefaultSlogan;
@@ -1955,14 +1955,14 @@ class _EditorScreenState extends State<EditorScreen> {
       context: context,
       builder: (dialogContext) {
         final mq = MediaQuery.of(dialogContext);
-        final maxW = (mq.size.width - 48).clamp(260.0, 360.0);
+        final maxW = (mq.size.width - 56).clamp(240.0, 300.0);
         final keyboardInset = mq.viewInsets.bottom;
         return AnimatedPadding(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
-          padding: EdgeInsets.only(bottom: keyboardInset),
+          padding: EdgeInsets.only(bottom: keyboardInset + 12),
           child: AlertDialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
             scrollable: true,
             title: Text(
               isUpdateMode
@@ -1990,8 +1990,8 @@ class _EditorScreenState extends State<EditorScreen> {
                       labelStyle: GoogleFonts.notoSansKr(),
                       hintStyle: GoogleFonts.notoSansKr(color: Colors.grey),
                     ),
-                    style: GoogleFonts.notoSansKr(fontSize: 16),
-                    autofocus: true,
+                    style: GoogleFonts.notoSansKr(fontSize: 14),
+                    autofocus: false,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) =>
                         saveAs(dialogContext, updateCurrent: isUpdateMode),
@@ -2083,8 +2083,8 @@ class _EditorScreenState extends State<EditorScreen> {
         'placeholders.address': '주소 입력',
         'placeholders.hotlink': '또는 이미지 URL 붙여넣기...',
         'basicProfileToastLine1': '입력 내용이 기본 프로필로 저장됩니다.',
-        'basicProfileToastLine2': '프로필 사진은 설정 > 개인 프로필에서 설정할 수 있습니다.',
-        'basicProfileToastAction': '설정',
+        'basicProfileToastLine2': '입력 중 변경사항은 자동으로 반영됩니다.',
+        'basicProfileToastAction': '확인',
         'jobTitlePickerTitle': '직함 / 직책 선택',
       };
       return _cachedTexts;
@@ -2132,8 +2132,8 @@ class _EditorScreenState extends State<EditorScreen> {
         'placeholders.address': 'Physical Address',
         'placeholders.hotlink': 'Or paste image URL (Hotlink)...',
         'basicProfileToastLine1': 'Your input will be saved as the basic profile.',
-        'basicProfileToastLine2': 'Profile photo can be set in Settings > Personal Profile.',
-        'basicProfileToastAction': 'Settings',
+        'basicProfileToastLine2': 'Changes are applied automatically while you type.',
+        'basicProfileToastAction': 'OK',
         'jobTitlePickerTitle': 'Select Job Title',
       };
       return _cachedTexts;
@@ -2167,9 +2167,7 @@ class _EditorScreenState extends State<EditorScreen> {
         duration: const Duration(seconds: 4),
         action: SnackBarAction(
           label: t['basicProfileToastAction']!,
-          onPressed: () {
-            provider.setActiveView(ViewType.settings);
-          },
+          onPressed: () {},
         ),
       ),
     );
