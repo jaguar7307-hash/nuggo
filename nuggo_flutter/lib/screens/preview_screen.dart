@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import '../models/card_data.dart';
 import '../widgets/nuggo_logo.dart';
+import '../widgets/send_card_sheet.dart';
 
 /// 원본 React PreviewView와 동일: 풀스크린 명함 배경 + 로고/슬로건/이름/3x2 액션/주소/하단 CTA
 class PreviewScreen extends StatefulWidget {
@@ -403,19 +404,21 @@ class _PreviewScreenState extends State<PreviewScreen> {
                           _previewTopBtn(
                             icon: Icons.send,
                             isLight: isLight,
-                            onTap: () async {
+                            onTap: () {
                               String url = data.shareLink.trim().isEmpty
                                   ? 'https://nuggo.me'
                                   : data.shareLink;
                               if (!url.startsWith('http')) {
                                 url = 'https://$url';
                               }
-                              await SharePlus.instance.share(
-                                ShareParams(
-                                  text: url,
-                                  subject:
-                                      '명함: ${data.fullName.isNotEmpty ? data.fullName : "NUGGO"}',
-                                ),
+                              final name = data.fullName.isEmpty
+                                  ? 'NUGGO'
+                                  : data.fullName;
+                              SendCardSheet.show(
+                                context,
+                                url: url,
+                                name: name,
+                                language: provider.settings.language,
                               );
                             },
                           ),

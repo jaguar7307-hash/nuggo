@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/app_provider.dart';
 import '../models/card_data.dart';
@@ -17,7 +16,7 @@ import '../constants/constants.dart';
 import '../constants/theme.dart';
 import '../widgets/business_card.dart';
 import '../widgets/card_display.dart';
-import '../debug_scroll_log.dart';
+import '../widgets/send_card_sheet.dart';
 
 class EditorScreen extends StatefulWidget {
   const EditorScreen({super.key});
@@ -269,14 +268,6 @@ class _EditorScreenState extends State<EditorScreen> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth;
-                  // #region agent log
-                  debugScrollLog(
-                    location: 'editor_screen.dart:build',
-                    message: 'editor_scroll_build',
-                    data: {'physics': 'AlwaysScrollableScrollPhysics+BouncingScrollPhysics'},
-                    hypothesisId: 'H1',
-                  );
-                  // #endregion
                   return SingleChildScrollView(
                     controller: _editorScrollController,
                     keyboardDismissBehavior:
@@ -518,7 +509,13 @@ class _EditorScreenState extends State<EditorScreen> {
     if (url.isEmpty) url = 'https://nuggo.me';
     if (!url.startsWith('http')) url = 'https://$url';
     final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
-    SharePlus.instance.share(ShareParams(text: url, subject: '명함: $name'));
+    final language = provider.settings.language;
+    SendCardSheet.show(
+      context,
+      url: url,
+      name: name,
+      language: language,
+    );
   }
 
   void _showQrDialogFromEditor(BuildContext context, AppProvider provider) {

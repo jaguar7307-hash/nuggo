@@ -15,6 +15,7 @@ import '../providers/app_provider.dart';
 import '../widgets/digital_card.dart';
 import '../widgets/business_card.dart' show kBusinessCardAspectRatio;
 import '../widgets/card_display.dart';
+import '../widgets/send_card_sheet.dart';
 
 /// ?? ?? ?? (CRM?)
 class _RecentSendItem {
@@ -285,7 +286,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            // ??? � ?? � NFC ?? ?
+            // ???? (???? ?? ???, ?? ??)
+            Center(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () {
+                    provider.loadProfile(selected);
+                    provider.setActiveView(ViewType.preview);
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: SizedBox(
+                    width: 84,
+                    height: 48,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.visibility_outlined,
+                              size: 24,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // ??? / ?? / NFC
             Center(
               child: Wrap(
                 alignment: WrapAlignment.center,
@@ -309,57 +350,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     label: 'NFC',
                     onTap: () => _showNfcComingSoon(context, language),
                   ),
-                  _TopActionButton(
-                    icon: Icons.qr_code_2,
-                    label: _tr(language, 'QR', 'QR'),
-                    onTap: () => _showQrDialog(context, selected, language),
-                    showDot: true,
-                  ),
-                  _TopActionButton(
-                    icon: Icons.visibility_outlined,
-                    label: _tr(language, 'ë¯¸ë¦¬ë³´ê¸°', 'Preview'),
-                    onTap: () {
-                      provider.loadProfile(selected);
-                      provider.setActiveView(ViewType.preview);
-                    },
-                  ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            // ???? ?? ? ???? ??? ?? ???? ???
-            Center(
-              child: GestureDetector(
-                onTap: () {
-                  provider.loadProfile(selected);
-                  provider.setActiveView(ViewType.preview);
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.grey.shade400),
-                      ),
-                      child: Icon(
-                        Icons.visibility_outlined,
-                        size: 24,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _tr(language, '????', 'Preview'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
             const SizedBox(height: 14),
@@ -386,7 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.send,
                     label: _tr(language, '??', 'Sends'),
                     value: _formatCount(sends),
-                    subtitle: _tr(language, '??�?? ??', 'Share tracking'),
+                    subtitle: _tr(language, '????? ??', 'Share tracking'),
                     subtitleColor: const Color(0xFF94A3B8),
                     subtitleIcon: Icons.trending_up,
                     compact: true,
@@ -505,13 +496,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 language,
                 dataLabel: _tr(language, '?? ?? ??', 'Shares'),
                 dataValue: '${sends ~/ 8 + 2}',
-                meaning: _tr(language, '?? ??�?? ??', 'Viral potential'),
-                action: _tr(language, '?? ??�???', 'Thank & reward'),
+                meaning: _tr(language, '?? ????? ??', 'Viral potential'),
+                action: _tr(language, '?? ??????', 'Thank & reward'),
               ),
               const SizedBox(height: 10),
               _buildInsightDashboardRow(
                 language,
-                dataLabel: _tr(language, '????�?? ??', 'Dwell & clicks'),
+                dataLabel: _tr(language, '??????? ??', 'Dwell & clicks'),
                 dataValue: _tr(language, '????? 1?', 'Portfolio #1'),
                 meaning: _tr(language, '?? ?? ???', 'Need insight'),
                 action: _tr(language, '??? ??', 'Improve content'),
@@ -709,7 +700,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    '${lead.name} � ?? ${lead.viewCount}',
+                    '${lead.name} ? ?? ${lead.viewCount}',
                     style: GoogleFonts.manrope(
                       fontSize: 11,
                       color: Colors.white.withValues(alpha: 0.9),
@@ -836,7 +827,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final doc = pw.Document();
     final name = data.fullName.isEmpty ? selected.name : data.fullName;
     final company = data.companyName;
-    final contact = [data.phone, data.email].where((e) => e.isNotEmpty).join(' � ');
+    final contact = [data.phone, data.email].where((e) => e.isNotEmpty).join(' ? ');
 
     doc.addPage(
       pw.Page(
@@ -1056,94 +1047,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
 
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Text(
-                  _tr(language, '?? ???', 'Send Card'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _SendOption(
-                  icon: Icons.chat_bubble,
-                  iconColor: const Color(0xFFFFE000),
-                  iconBg: const Color(0xFF3C1E1E),
-                  label: _tr(language, '?????? ???', 'Send via KakaoTalk'),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    recordSend('????');
-                    final kakaoUrl = Uri.parse(
-                      'kakaolink://send?text=${Uri.encodeComponent(url)}',
-                    );
-                    final fallback = Uri.parse('https://accounts.kakao.com');
-                    if (!await launchUrl(
-                      kakaoUrl,
-                      mode: LaunchMode.externalApplication,
-                    )) {
-                      await launchUrl(fallback,
-                          mode: LaunchMode.externalApplication);
-                    }
-                  },
-                ),
-                _SendOption(
-                  icon: Icons.sms,
-                  iconColor: Colors.white,
-                  iconBg: Colors.green.shade700,
-                  label: _tr(language, '??(SMS)? ???', 'Send via SMS'),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    recordSend('??(SMS)');
-                    final body = Uri.encodeComponent(
-                        '${_tr(language, '? ??:', 'My card:')} $url');
-                    final smsUri = Uri.parse('sms:?body=$body');
-                    await launchUrl(smsUri,
-                        mode: LaunchMode.externalApplication);
-                  },
-                ),
-                _SendOption(
-                  icon: Icons.email,
-                  iconColor: Colors.white,
-                  iconBg: Colors.red.shade600,
-                  label: _tr(language, '???? ???', 'Send via Email'),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    recordSend('???');
-                    final subject = Uri.encodeComponent(
-                        _tr(language, '??: $name', 'Card: $name'));
-                    final body = Uri.encodeComponent(url);
-                    final mailUri =
-                        Uri.parse('mailto:?subject=$subject&body=$body');
-                    await launchUrl(mailUri,
-                        mode: LaunchMode.externalApplication);
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
+    SendCardSheet.show(
+      context,
+      url: url,
+      name: name,
+      language: language,
+      onRecordSend: recordSend,
     );
   }
 
@@ -1664,14 +1573,12 @@ class _TopActionButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool filled;
-  final bool showDot;
 
   const _TopActionButton({
     required this.icon,
     required this.label,
     required this.onTap,
     this.filled = false,
-    this.showDot = false,
   });
 
   @override
@@ -1696,45 +1603,25 @@ class _TopActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: border,
           ),
-          child: Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, size: 22, color: Colors.white),
-                    const SizedBox(height: 2),
-                    Text(
-                      label,
-                      style: GoogleFonts.manrope(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white.withValues(alpha: 0.95),
-                        letterSpacing: 0.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              if (showDot)
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFF101822).withValues(alpha: 0.5),
-                      ),
-                    ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 22, color: Colors.white),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: GoogleFonts.manrope(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withValues(alpha: 0.95),
+                    letterSpacing: 0.2,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1814,51 +1701,6 @@ class _RecentSendTile extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// ???? ? ? ?? ?
-class _SendOption extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String label;
-  final VoidCallback onTap;
-
-  const _SendOption({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconColor, size: 22),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 15),
-            ),
-          ],
-        ),
       ),
     );
   }
