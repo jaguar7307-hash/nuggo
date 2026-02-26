@@ -54,7 +54,7 @@ class _EditorScreenState extends State<EditorScreen> {
   String? _pendingDefaultSlogan;
   bool _aiSloganLoading = false;
   bool _sloganKoreanMode = true;
-  bool _formReady = false;
+  bool _formReady = true;
   bool _basicProfileToastShown = false;
   final TextEditingController _sloganController = TextEditingController();
   final Map<String, TextEditingController> _formControllers = {};
@@ -70,7 +70,6 @@ class _EditorScreenState extends State<EditorScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      setState(() => _formReady = true);
       _precacheThemeImages();
     });
   }

@@ -87,51 +87,6 @@ void main() async {
   );
 }
 
-/// 첫 프레임이 폰에서 그려지는지 확인용 — 밝은 배경이면 Flutter 동작, 검정이면 엔진/설정 이슈
-class _FirstFrameGate extends StatefulWidget {
-  final Widget child;
-
-  const _FirstFrameGate({required this.child});
-
-  @override
-  State<_FirstFrameGate> createState() => _FirstFrameGateState();
-}
-
-class _FirstFrameGateState extends State<_FirstFrameGate> {
-  bool _ready = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _ready = true);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_ready) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          backgroundColor: const Color(0xFFF5F5F7),
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('NUGGO', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
-                const SizedBox(height: 16),
-                Text('로딩 중...', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-    return widget.child;
-  }
-}
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -142,19 +97,17 @@ class MyApp extends StatelessWidget {
     final darkMode = context.select<AppProvider, bool>(
       (p) => p.settings.darkMode,
     );
-    return _FirstFrameGate(
-      child: MaterialApp(
-        title: 'NUGGO',
-        debugShowCheckedModeBanner: false,
-        theme: darkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
-        builder: (context, child) {
-          return Container(
-            color: darkMode ? const Color(0xFF101822) : const Color(0xFFF8F9FA),
-            child: child,
-          );
-        },
-        home: const MainScreen(),
-      ),
+    return MaterialApp(
+      title: 'NUGGO',
+      debugShowCheckedModeBanner: false,
+      theme: darkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
+      builder: (context, child) {
+        return Container(
+          color: darkMode ? const Color(0xFF101822) : const Color(0xFFF8F9FA),
+          child: child,
+        );
+      },
+      home: const MainScreen(),
     );
   }
 }
@@ -184,9 +137,8 @@ class _MainScreenState extends State<MainScreen> {
 
   /// 첫 빌드 시 set이 비어 있으면 activeIndex만 사용(상태 변경 없음). 이후에는 _builtTabIndices 사용.
   List<Widget> _buildLazyTabChildren(int activeIndex) {
-    final indices = _builtTabIndices.isEmpty
-        ? <int>{activeIndex}
-        : _builtTabIndices;
+    // 활성 탭은 항상 즉시 빌드해서 첫 진입 시 흰/검은 빈 프레임 깜빡임을 방지
+    final indices = <int>{..._builtTabIndices, activeIndex};
     return [
       indices.contains(0)
           ? const ProfileScreen()
