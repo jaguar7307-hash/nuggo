@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
@@ -25,7 +26,6 @@ class SendCardSheet extends StatelessWidget {
     this.onRecordSend,
   });
 
-  /// 바텀시트 표시 (내 명함/에디터/미리보기 공통)
   static void show(
     BuildContext context, {
     required String url,
@@ -72,7 +72,20 @@ class SendCardSheet extends StatelessWidget {
     return lines.isEmpty ? name : lines.join('\n');
   }
 
-  // 카카오톡: OS 공유시트 → 카카오톡 선택
+  /// 클립보드에 복사 + SnackBar 안내
+  Future<void> _copyAndNotify(BuildContext context, String text, String msg) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  // 카카오톡: OS 공유시트 → 카카오톡 선택 / 실패 시 클립보드 복사 + 안내
   void _handleKakao(BuildContext context) async {
     Navigator.pop(context);
     onRecordSend?.call(_tr('카카오톡', 'KakaoTalk'));
@@ -81,15 +94,34 @@ class SendCardSheet extends StatelessWidget {
       await LoginBottomSheet.show(context);
       return;
     }
-    final result = await SharePlus.instance.share(
-      ShareParams(text: _buildCardText()),
-    );
-    if (result.status == ShareResultStatus.success && provider.isGuest) {
-      await provider.markGuestShareTrialUsed();
+    final text = _buildCardText();
+    try {
+      final result = await SharePlus.instance.share(ShareParams(text: text));
+      final status = result.status;
+      if (status == ShareResultStatus.success && provider.isGuest) {
+        await provider.markGuestShareTrialUsed();
+      } else if (status == ShareResultStatus.unavailable) {
+        // 공유시트 사용 불가 → 클립보드 복사
+        if (context.mounted) {
+          await _copyAndNotify(
+            context,
+            text,
+            _tr('텍스트를 복사했어요. 카카오톡에서 붙여넣기 해주세요.', 'Copied! Paste it in KakaoTalk.'),
+          );
+        }
+      }
+    } catch (_) {
+      if (context.mounted) {
+        await _copyAndNotify(
+          context,
+          text,
+          _tr('텍스트를 복사했어요. 카카오톡에서 붙여넣기 해주세요.', 'Copied! Paste it in KakaoTalk.'),
+        );
+      }
     }
   }
 
-  // 문자: 실제 명함 텍스트를 본문으로
+  // 문자: sms: 스킴으로 앱 열기 → 실패 시 OS 공유시트 → 모두 실패 시 클립보드
   void _handleSms(BuildContext context) async {
     Navigator.pop(context);
     onRecordSend?.call(_tr('문자(SMS)', 'SMS'));
@@ -98,15 +130,33 @@ class SendCardSheet extends StatelessWidget {
       await LoginBottomSheet.show(context);
       return;
     }
-    final body = Uri.encodeComponent(_buildCardText());
+    final text = _buildCardText();
+    final body = Uri.encodeComponent(text);
     final smsUri = Uri.parse('sms:?body=$body');
     final ok = await launchUrl(smsUri, mode: LaunchMode.externalApplication);
-    if (ok && provider.isGuest) {
-      await provider.markGuestShareTrialUsed();
+    if (ok) {
+      if (provider.isGuest) await provider.markGuestShareTrialUsed();
+      return;
+    }
+    // sms: 실패 → OS 공유시트 시도
+    if (!context.mounted) return;
+    try {
+      final result = await SharePlus.instance.share(ShareParams(text: text));
+      if (result.status == ShareResultStatus.success && provider.isGuest) {
+        await provider.markGuestShareTrialUsed();
+      }
+    } catch (_) {
+      if (context.mounted) {
+        await _copyAndNotify(
+          context,
+          text,
+          _tr('텍스트를 복사했어요. 문자 앱에 붙여넣기 해주세요.', 'Copied! Paste it in your SMS app.'),
+        );
+      }
     }
   }
 
-  // 이메일: 실제 명함 텍스트를 본문으로
+  // 이메일: mailto: 스킴 → 실패 시 OS 공유시트 → 모두 실패 시 클립보드
   void _handleEmail(BuildContext context) async {
     Navigator.pop(context);
     onRecordSend?.call(_tr('이메일', 'Email'));
@@ -115,17 +165,48 @@ class SendCardSheet extends StatelessWidget {
       await LoginBottomSheet.show(context);
       return;
     }
+    final text = _buildCardText();
     final displayName = cardData?.fullName.trim().isNotEmpty == true
         ? cardData!.fullName.trim()
         : name;
     final subject = Uri.encodeComponent(
       _tr('$displayName 명함', '$displayName\'s Card'),
     );
-    final body = Uri.encodeComponent(_buildCardText());
+    final body = Uri.encodeComponent(text);
     final mailUri = Uri.parse('mailto:?subject=$subject&body=$body');
     final ok = await launchUrl(mailUri, mode: LaunchMode.externalApplication);
-    if (ok && provider.isGuest) {
-      await provider.markGuestShareTrialUsed();
+    if (ok) {
+      if (provider.isGuest) await provider.markGuestShareTrialUsed();
+      return;
+    }
+    // mailto: 실패 → OS 공유시트 시도
+    if (!context.mounted) return;
+    try {
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          text: text,
+          subject: _tr('$displayName 명함', '$displayName\'s Card'),
+        ),
+      );
+      if (result.status == ShareResultStatus.success && provider.isGuest) {
+        await provider.markGuestShareTrialUsed();
+      } else if (result.status == ShareResultStatus.unavailable) {
+        if (context.mounted) {
+          await _copyAndNotify(
+            context,
+            text,
+            _tr('텍스트를 복사했어요. 이메일 앱에 붙여넣기 해주세요.', 'Copied! Paste it in your email app.'),
+          );
+        }
+      }
+    } catch (_) {
+      if (context.mounted) {
+        await _copyAndNotify(
+          context,
+          text,
+          _tr('텍스트를 복사했어요. 이메일 앱에 붙여넣기 해주세요.', 'Copied! Paste it in your email app.'),
+        );
+      }
     }
   }
 
