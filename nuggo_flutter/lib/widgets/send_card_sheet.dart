@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/app_provider.dart';
+import 'login_bottom_sheet.dart';
 
 /// 공통 명함 보내기 바텀시트 (내 명함/에디터/미리보기 통일)
 class SendCardSheet extends StatelessWidget {
@@ -44,32 +48,56 @@ class SendCardSheet extends StatelessWidget {
   void _handleKakao(BuildContext context) async {
     Navigator.pop(context);
     onRecordSend?.call(_tr('카카오톡', 'KakaoTalk'));
+    final provider = context.read<AppProvider>();
+    if (!provider.canAttemptGuestShare()) {
+      await LoginBottomSheet.show(context);
+      return;
+    }
     final kakaoUrl = Uri.parse(
       'kakaolink://send?text=${Uri.encodeComponent(url)}',
     );
     final fallback = Uri.parse('https://accounts.kakao.com');
-    if (!await launchUrl(kakaoUrl, mode: LaunchMode.externalApplication)) {
-      await launchUrl(fallback, mode: LaunchMode.externalApplication);
+    final ok = await launchUrl(kakaoUrl, mode: LaunchMode.externalApplication);
+    if (ok) {
+      await provider.markGuestShareTrialUsed();
+      return;
     }
+    await launchUrl(fallback, mode: LaunchMode.externalApplication);
   }
 
   void _handleSms(BuildContext context) async {
     Navigator.pop(context);
     onRecordSend?.call(_tr('문자(SMS)', 'SMS'));
+    final provider = context.read<AppProvider>();
+    if (!provider.canAttemptGuestShare()) {
+      await LoginBottomSheet.show(context);
+      return;
+    }
     final body = Uri.encodeComponent(
       '${_tr('내 명함:', 'My card:')} $url',
     );
     final smsUri = Uri.parse('sms:?body=$body');
-    await launchUrl(smsUri, mode: LaunchMode.externalApplication);
+    final ok = await launchUrl(smsUri, mode: LaunchMode.externalApplication);
+    if (ok) {
+      await provider.markGuestShareTrialUsed();
+    }
   }
 
   void _handleEmail(BuildContext context) async {
     Navigator.pop(context);
     onRecordSend?.call(_tr('이메일', 'Email'));
+    final provider = context.read<AppProvider>();
+    if (!provider.canAttemptGuestShare()) {
+      await LoginBottomSheet.show(context);
+      return;
+    }
     final subject = Uri.encodeComponent(_tr('명함: $name', 'Card: $name'));
     final body = Uri.encodeComponent(url);
     final mailUri = Uri.parse('mailto:?subject=$subject&body=$body');
-    await launchUrl(mailUri, mode: LaunchMode.externalApplication);
+    final ok = await launchUrl(mailUri, mode: LaunchMode.externalApplication);
+    if (ok) {
+      await provider.markGuestShareTrialUsed();
+    }
   }
 
   @override

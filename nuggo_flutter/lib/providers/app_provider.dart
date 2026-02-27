@@ -77,6 +77,8 @@ class AppProvider with ChangeNotifier {
       _scrollToBackgroundThemeOnNextBuild;
   bool get isPro => _currentUser?.membership == MembershipTier.pro;
   bool get isPhoneFrameMode => _isPhoneFrameMode;
+  bool get isGuest => _currentUser?.isGuest ?? true;
+  bool get guestShareTrialUsed => _settings.guestShareTrialUsed;
 
   void requestScrollToBackgroundTheme() {
     _scrollToBackgroundThemeOnNextBuild = true;
@@ -516,6 +518,52 @@ class AppProvider with ChangeNotifier {
       await updateUser(updatedUser);
     }
     notifyListeners();
+  }
+
+  /// 게스트 공유/보내기 1회 체험: 시도 가능 여부
+  /// - 게스트가 아니면 true
+  /// - 게스트이면 아직 사용 전일 때만 true
+  bool canAttemptGuestShare() {
+    if (!isGuest) return true;
+    return !_settings.guestShareTrialUsed;
+  }
+
+  /// 게스트 공유/보내기 1회 체험: 실제 전송/공유 성공 시 차감(사용 처리)
+  Future<void> markGuestShareTrialUsed() async {
+    if (!isGuest) return;
+    if (_settings.guestShareTrialUsed) return;
+    await updateSettings(_settings.copyWith(guestShareTrialUsed: true));
+  }
+
+  /// 게스트가 "보내기/공유"를 하기 위한 최소 필수 조건 체크.
+  /// - 게스트가 아니면 통과(null)
+  /// - 게스트이면: 기본 프로필 저장 + 이름 + 연락처 1개 이상 + 배경(theme) 존재
+  /// 실패 시 사용자에게 보여줄 메시지를 반환.
+  String? validateGuestSharePrerequisites(CardData data) {
+    if (!isGuest) return null;
+
+    if (!hasBasicProfile) {
+      return '먼저 내 명함을 저장해주세요. (에디터 → 저장)';
+    }
+
+    if (data.fullName.trim().isEmpty) {
+      return '이름을 입력해야 보낼 수 있어요.';
+    }
+
+    final hasAnyContact = data.phone.trim().isNotEmpty ||
+        data.sms.trim().isNotEmpty ||
+        data.email.trim().isNotEmpty ||
+        data.kakao.trim().isNotEmpty ||
+        data.website.trim().isNotEmpty;
+    if (!hasAnyContact) {
+      return '연락처(전화/이메일/카카오/웹사이트) 중 1개 이상 입력해주세요.';
+    }
+
+    if (data.theme.trim().isEmpty) {
+      return '배경 이미지를 선택해주세요.';
+    }
+
+    return null;
   }
 
   // Send Count

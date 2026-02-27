@@ -22,6 +22,7 @@ import '../constants/theme.dart';
 import '../widgets/business_card.dart';
 import '../widgets/card_display.dart';
 import '../widgets/send_card_sheet.dart';
+import '../widgets/login_bottom_sheet.dart';
 
 class EditorScreen extends StatefulWidget {
   const EditorScreen({super.key});
@@ -550,8 +551,23 @@ class _EditorScreenState extends State<EditorScreen>
     );
   }
 
-  void _shareCardFromEditor(BuildContext context, AppProvider provider) {
+  Future<void> _shareCardFromEditor(BuildContext context, AppProvider provider) async {
     final data = provider.selectedProfile?.data ?? provider.currentCardData;
+    final prereq = provider.validateGuestSharePrerequisites(data);
+    if (prereq != null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(prereq),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (!provider.canAttemptGuestShare()) {
+      if (context.mounted) await LoginBottomSheet.show(context);
+      return;
+    }
     String url = data.shareLink.trim();
     if (url.isEmpty) url = 'https://nuggo.me';
     if (!url.startsWith('http')) url = 'https://$url';
@@ -567,6 +583,17 @@ class _EditorScreenState extends State<EditorScreen>
 
   void _showQrDialogFromEditor(BuildContext context, AppProvider provider) {
     final data = provider.selectedProfile?.data ?? provider.currentCardData;
+    final prereq = provider.validateGuestSharePrerequisites(data);
+    if (prereq != null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(prereq),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     String url = data.shareLink.trim();
     if (url.isEmpty) url = 'https://nuggo.me';
     if (!url.startsWith('http')) url = 'https://$url';
@@ -834,7 +861,9 @@ class _EditorScreenState extends State<EditorScreen>
     AppProvider provider,
     CardData data,
   ) {
-    final isLocalSelected = data.theme.startsWith('/') || data.theme.startsWith('file://');
+    final rawPath = data.theme.replaceFirst('file://', '');
+    final isLocalSelected = (data.theme.startsWith('/') || data.theme.startsWith('file://')) &&
+        File(rawPath).existsSync();
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _pickBackgroundImage(context, provider, data),
@@ -853,7 +882,7 @@ class _EditorScreenState extends State<EditorScreen>
           color: Colors.grey.shade50,
           image: isLocalSelected
               ? DecorationImage(
-                  image: FileImage(File(data.theme.replaceFirst('file://', ''))),
+                  image: FileImage(File(rawPath)),
                   fit: BoxFit.cover,
                 )
               : null,
@@ -1946,7 +1975,10 @@ class _EditorScreenState extends State<EditorScreen>
             ? DecorationImage(
                 image: theme.startsWith('http')
                     ? ResizeImage(NetworkImage(theme), width: 104, height: 104)
-                    : FileImage(File(theme)) as ImageProvider,
+                    : (File(theme).existsSync()
+                        ? FileImage(File(theme))
+                        : NetworkImage(AppConstants.initialCardData.theme))
+                        as ImageProvider,
                 fit: BoxFit.cover,
                 onError: (_, _) {},
               )

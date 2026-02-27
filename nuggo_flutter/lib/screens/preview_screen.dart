@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../constants/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -12,6 +13,7 @@ import '../providers/app_provider.dart';
 import '../models/card_data.dart';
 import '../widgets/nuggo_logo.dart';
 import '../widgets/send_card_sheet.dart';
+import '../widgets/login_bottom_sheet.dart';
 
 /// 원본 React PreviewView와 동일: 풀스크린 명함 배경 + 로고/슬로건/이름/3x2 액션/주소/하단 CTA
 class PreviewScreen extends StatefulWidget {
@@ -264,14 +266,37 @@ class _PreviewScreenState extends State<PreviewScreen> {
   Future<void> _handleAction(String type, String value, CardData data) async {
     if (value.isEmpty && type != 'share' && type != 'portfolio') return;
     if (type == 'share') {
+      final provider = context.read<AppProvider>();
+      final prereq = provider.validateGuestSharePrerequisites(data);
+      if (prereq != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(prereq),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: provider.settings.language == 'en' ? 'Edit' : '작성하기',
+              onPressed: () => provider.setActiveView(ViewType.editor),
+            ),
+          ),
+        );
+        return;
+      }
+      if (!provider.canAttemptGuestShare()) {
+        if (mounted) await LoginBottomSheet.show(context);
+        return;
+      }
       String url = data.shareLink.trim().isEmpty ? 'https://nuggo.me' : data.shareLink;
       if (!url.startsWith('http')) url = 'https://$url';
-      await SharePlus.instance.share(
+      final result = await SharePlus.instance.share(
         ShareParams(
           text: url,
           subject: '명함: ${data.fullName.isNotEmpty ? data.fullName : "NUGGO"}',
         ),
       );
+      if (provider.isGuest && (result.status.name == 'success')) {
+        await provider.markGuestShareTrialUsed();
+      }
       return;
     }
     if (type == 'mail') {
@@ -354,7 +379,11 @@ class _PreviewScreenState extends State<PreviewScreen> {
                       ? DecorationImage(
                           image: theme.startsWith('http')
                               ? NetworkImage(theme)
-                              : FileImage(File(theme)) as ImageProvider,
+                              : (File(theme).existsSync()
+                                  ? FileImage(File(theme))
+                                  : NetworkImage(
+                                      AppConstants.initialCardData.theme))
+                                  as ImageProvider,
                           fit: BoxFit.cover,
                           alignment: Alignment.center,
                         )
@@ -404,7 +433,32 @@ class _PreviewScreenState extends State<PreviewScreen> {
                           _previewTopBtn(
                             icon: Icons.send,
                             isLight: isLight,
-                            onTap: () {
+                            onTap: () async {
+                              final prereq =
+                                  provider.validateGuestSharePrerequisites(data);
+                              if (prereq != null) {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(prereq),
+                                    behavior: SnackBarBehavior.floating,
+                                    action: SnackBarAction(
+                                      label: provider.settings.language == 'en'
+                                          ? 'Edit'
+                                          : '작성하기',
+                                      onPressed: () => provider
+                                          .setActiveView(ViewType.editor),
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+                              if (!provider.canAttemptGuestShare()) {
+                                if (context.mounted) {
+                                  await LoginBottomSheet.show(context);
+                                }
+                                return;
+                              }
                               String url = data.shareLink.trim().isEmpty
                                   ? 'https://nuggo.me'
                                   : data.shareLink;

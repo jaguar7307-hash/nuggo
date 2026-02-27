@@ -11,6 +11,7 @@ import '../models/app_settings.dart';
 import '../models/card_data.dart';
 import '../models/user.dart';
 import '../providers/app_provider.dart';
+import '../widgets/login_bottom_sheet.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -272,10 +273,7 @@ class SettingsScreen extends StatelessWidget {
                             language: lang,
                             onPrimaryTap: () async {
                               if (isGuest) {
-                                _showPlaceholder(
-                                  navContext,
-                                  _tr(lang, '로그인/회원가입 화면은 곧 연결됩니다.', 'Sign in / sign up is coming soon.'),
-                                );
+                                await LoginBottomSheet.show(navContext);
                                 return;
                               }
                               await _handleLogout(navContext, provider, lang);
@@ -693,20 +691,32 @@ class _LegalContentScreen extends StatelessWidget {
     required this.content,
   });
 
+  void _popBack(BuildContext context) {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FC),
-      appBar: AppBar(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _popBack(context);
+      },
+      child: Scaffold(
         backgroundColor: const Color(0xFFF8F9FC),
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          color: const Color(0xFF111827),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFF8F9FC),
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            color: const Color(0xFF111827),
+            tooltip: '뒤로',
+            onPressed: () => _popBack(context),
+          ),
+          title: Text(
           title,
           style: SettingsScreen._korean(
             size: 20,
@@ -715,6 +725,16 @@ class _LegalContentScreen extends StatelessWidget {
           ),
         ),
         centerTitle: true,
+        actions: [
+          TextButton(
+            onPressed: () => _popBack(context),
+            child: Text(
+              '닫기',
+              style: SettingsScreen._korean(size: 14, weight: FontWeight.w600, color: const Color(0xFF4B61D1)),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -729,6 +749,7 @@ class _LegalContentScreen extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -737,6 +758,10 @@ class _AppSettingsScreen extends StatelessWidget {
   const _AppSettingsScreen();
 
   String _tr(String lang, String ko, String en) => lang == 'en' ? en : ko;
+
+  void _popBack(BuildContext context) {
+    if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+  }
 
   String _profilePrivacyLabel(String lang, ProfilePrivacy p) {
     switch (p) {
@@ -756,21 +781,27 @@ class _AppSettingsScreen extends StatelessWidget {
         final lang = provider.settings.language;
         final settings = provider.settings;
 
-        return Scaffold(
-          backgroundColor: const Color(0xFFF8F9FC),
-          appBar: AppBar(
+        return PopScope(
+          canPop: true,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _popBack(context);
+          },
+          child: Scaffold(
             backgroundColor: const Color(0xFFF8F9FC),
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded),
-              color: const Color(0xFF111827),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            title: Column(
-              children: [
-                Text(
-                  _tr(lang, '앱 설정', 'App Settings'),
+            appBar: AppBar(
+              backgroundColor: const Color(0xFFF8F9FC),
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                color: const Color(0xFF111827),
+                tooltip: _tr(lang, '뒤로', 'Back'),
+                onPressed: () => _popBack(context),
+              ),
+              title: Column(
+                children: [
+                  Text(
+                    _tr(lang, '앱 설정', 'App Settings'),
                   style: SettingsScreen._korean(
                     size: 20,
                     weight: FontWeight.w700,
@@ -789,6 +820,16 @@ class _AppSettingsScreen extends StatelessWidget {
               ],
             ),
             centerTitle: true,
+            actions: [
+              TextButton(
+                onPressed: () => _popBack(context),
+                child: Text(
+                  _tr(lang, '닫기', 'Close'),
+                  style: SettingsScreen._korean(size: 14, weight: FontWeight.w600, color: const Color(0xFF4B61D1)),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
           body: SafeArea(
             child: SingleChildScrollView(
@@ -888,6 +929,7 @@ class _AppSettingsScreen extends StatelessWidget {
               ),
             ),
           ),
+        ),
         );
       },
     );
@@ -1554,24 +1596,35 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
     }
   }
 
+  void _popBack(BuildContext context) {
+    if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = context.select<AppProvider, String>((p) => p.settings.language);
     final avatar = _avatarProvider();
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FC),
-      appBar: AppBar(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _popBack(context);
+      },
+      child: Scaffold(
         backgroundColor: const Color(0xFFF8F9FC),
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Column(
-          children: [
-            Text(
-              _tr(lang, '프로필 편집', 'Edit Profile'),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFF8F9FC),
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            color: const Color(0xFF111827),
+            tooltip: _tr(lang, '뒤로', 'Back'),
+            onPressed: () => _popBack(context),
+          ),
+          title: Column(
+            children: [
+              Text(
+                _tr(lang, '프로필 편집', 'Edit Profile'),
               style: SettingsScreen._korean(
                 size: 20,
                 weight: FontWeight.w700,
@@ -1591,6 +1644,17 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
         ),
         centerTitle: true,
         actions: [
+          TextButton(
+            onPressed: _saving ? null : () => _popBack(context),
+            child: Text(
+              _tr(lang, '닫기', 'Close'),
+              style: SettingsScreen._korean(
+                size: 14,
+                weight: FontWeight.w600,
+                color: const Color(0xFF4B61D1),
+              ),
+            ),
+          ),
           TextButton(
             onPressed: _saving ? null : _submit,
             child: Text(
@@ -1847,6 +1911,7 @@ class _ProfileEditScreenState extends State<_ProfileEditScreen> {
           },
         ),
       ),
+    ),
     );
   }
 
@@ -2067,6 +2132,10 @@ class _SubscriptionSecurityScreen extends StatelessWidget {
 
   String _tr(String lang, String ko, String en) => lang == 'en' ? en : ko;
 
+  void _popBack(BuildContext context) {
+    if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
@@ -2078,20 +2147,27 @@ class _SubscriptionSecurityScreen extends StatelessWidget {
             : _tr(lang, '무료플랜 사용 중', 'Free plan');
         final providerText = user == null ? '-' : user.provider.name.toUpperCase();
 
-        return Scaffold(
-          backgroundColor: const Color(0xFFF8F9FC),
-          appBar: AppBar(
+        return PopScope(
+          canPop: true,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _popBack(context);
+          },
+          child: Scaffold(
             backgroundColor: const Color(0xFFF8F9FC),
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            title: Column(
-              children: [
-                Text(
-                  _tr(lang, '구독 및 보안', 'Subscription & Security'),
+            appBar: AppBar(
+              backgroundColor: const Color(0xFFF8F9FC),
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                color: const Color(0xFF111827),
+                tooltip: _tr(lang, '뒤로', 'Back'),
+                onPressed: () => _popBack(context),
+              ),
+              title: Column(
+                children: [
+                  Text(
+                    _tr(lang, '구독 및 보안', 'Subscription & Security'),
                   style: SettingsScreen._korean(
                     size: 20,
                     weight: FontWeight.w700,
@@ -2110,6 +2186,16 @@ class _SubscriptionSecurityScreen extends StatelessWidget {
               ],
             ),
             centerTitle: true,
+            actions: [
+              TextButton(
+                onPressed: () => _popBack(context),
+                child: Text(
+                  _tr(lang, '닫기', 'Close'),
+                  style: SettingsScreen._korean(size: 14, weight: FontWeight.w600, color: const Color(0xFF4B61D1)),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
           body: SafeArea(
             child: SingleChildScrollView(
@@ -2249,6 +2335,7 @@ class _SubscriptionSecurityScreen extends StatelessWidget {
               ),
             ),
           ),
+        ),
         );
       },
     );
@@ -2379,20 +2466,31 @@ class _NFCGuideScreenState extends State<_NFCGuideScreen> {
 
   String _tr(String lang, String ko, String en) => lang == 'en' ? en : ko;
 
+  void _popBack(BuildContext context) {
+    if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = context.select<AppProvider, String>((p) => p.settings.language);
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FC),
-      appBar: AppBar(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _popBack(context);
+      },
+      child: Scaffold(
         backgroundColor: const Color(0xFFF8F9FC),
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Column(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFF8F9FC),
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            color: const Color(0xFF111827),
+            tooltip: _tr(lang, '뒤로', 'Back'),
+            onPressed: () => _popBack(context),
+          ),
+          title: Column(
           children: [
             Text(
               _tr(lang, 'NFC 가이드', 'NFC Guide'),
@@ -2414,6 +2512,16 @@ class _NFCGuideScreenState extends State<_NFCGuideScreen> {
           ],
         ),
         centerTitle: true,
+        actions: [
+          TextButton(
+            onPressed: () => _popBack(context),
+            child: Text(
+              _tr(lang, '닫기', 'Close'),
+              style: SettingsScreen._korean(size: 14, weight: FontWeight.w600, color: const Color(0xFF4B61D1)),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -2620,7 +2728,7 @@ class _NFCGuideScreenState extends State<_NFCGuideScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => _popBack(context),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF111827),
                   foregroundColor: Colors.white,
@@ -2638,6 +2746,7 @@ class _NFCGuideScreenState extends State<_NFCGuideScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }
