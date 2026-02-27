@@ -473,6 +473,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 url: url,
                                 name: name,
                                 language: provider.settings.language,
+                                cardData: data,
                               );
                             },
                           ),
@@ -480,7 +481,31 @@ class _PreviewScreenState extends State<PreviewScreen> {
                           _previewTopBtn(
                             icon: Icons.qr_code_2,
                             isLight: isLight,
-                            onTap: () => _showQrDialog(context, data),
+                            onTap: () {
+                              final prereq =
+                                  provider.validateGuestSharePrerequisites(data);
+                              if (prereq != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(prereq),
+                                    behavior: SnackBarBehavior.floating,
+                                    action: SnackBarAction(
+                                      label: provider.settings.language == 'en'
+                                          ? 'Edit'
+                                          : '작성하기',
+                                      onPressed: () => provider
+                                          .setActiveView(ViewType.editor),
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+                              if (!provider.canAttemptGuestShare()) {
+                                LoginBottomSheet.show(context);
+                                return;
+                              }
+                              _showQrDialog(context, data);
+                            },
                           ),
                           const SizedBox(width: 4),
                           _previewTopBtn(

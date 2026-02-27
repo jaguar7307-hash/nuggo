@@ -73,6 +73,7 @@
 		<string>mailto</string>
 		<string>https</string>
 		<string>http</string>
+		<string>kakaotalk</string>
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>

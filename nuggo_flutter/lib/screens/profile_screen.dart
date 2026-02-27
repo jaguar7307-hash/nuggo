@@ -1075,6 +1075,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       url: url,
       name: name,
       language: language,
+      cardData: selected.data,
       onRecordSend: recordSend,
     );
   }

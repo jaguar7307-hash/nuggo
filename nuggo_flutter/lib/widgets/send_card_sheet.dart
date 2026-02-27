@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 
+import '../models/card_data.dart';
 import '../providers/app_provider.dart';
 import 'login_bottom_sheet.dart';
 
@@ -11,6 +13,7 @@ class SendCardSheet extends StatelessWidget {
   final String url;
   final String name;
   final String language;
+  final CardData? cardData;
   final void Function(String method)? onRecordSend;
 
   const SendCardSheet({
@@ -18,6 +21,7 @@ class SendCardSheet extends StatelessWidget {
     required this.url,
     required this.name,
     required this.language,
+    this.cardData,
     this.onRecordSend,
   });
 
@@ -27,6 +31,7 @@ class SendCardSheet extends StatelessWidget {
     required String url,
     required String name,
     required String language,
+    CardData? cardData,
     void Function(String)? onRecordSend,
   }) {
     showModalBottomSheet(
@@ -38,6 +43,7 @@ class SendCardSheet extends StatelessWidget {
         url: url,
         name: name,
         language: language,
+        cardData: cardData,
         onRecordSend: onRecordSend,
       ),
     );
@@ -45,6 +51,28 @@ class SendCardSheet extends StatelessWidget {
 
   String _tr(String ko, String en) => language == 'en' ? en : ko;
 
+  /// 명함 정보를 텍스트로 변환
+  String _buildCardText() {
+    final d = cardData;
+    if (d == null) return name;
+
+    final lines = <String>[];
+    final nameParts = <String>[];
+    if (d.fullName.trim().isNotEmpty) nameParts.add(d.fullName.trim());
+    if (d.jobTitle.trim().isNotEmpty) nameParts.add(d.jobTitle.trim());
+    if (d.companyName.trim().isNotEmpty) nameParts.add(d.companyName.trim());
+    if (nameParts.isNotEmpty) lines.add(nameParts.join(' | '));
+
+    if (d.phone.trim().isNotEmpty) lines.add('📞 ${d.phone.trim()}');
+    if (d.email.trim().isNotEmpty) lines.add('✉️ ${d.email.trim()}');
+    if (d.kakao.trim().isNotEmpty) lines.add('💬 ${d.kakao.trim()}');
+    if (d.website.trim().isNotEmpty) lines.add('🔗 ${d.website.trim()}');
+    if (d.address.trim().isNotEmpty) lines.add('📍 ${d.address.trim()}');
+
+    return lines.isEmpty ? name : lines.join('\n');
+  }
+
+  // 카카오톡: OS 공유시트 → 카카오톡 선택
   void _handleKakao(BuildContext context) async {
     Navigator.pop(context);
     onRecordSend?.call(_tr('카카오톡', 'KakaoTalk'));
@@ -53,18 +81,15 @@ class SendCardSheet extends StatelessWidget {
       await LoginBottomSheet.show(context);
       return;
     }
-    final kakaoUrl = Uri.parse(
-      'kakaolink://send?text=${Uri.encodeComponent(url)}',
+    final result = await SharePlus.instance.share(
+      ShareParams(text: _buildCardText()),
     );
-    final fallback = Uri.parse('https://accounts.kakao.com');
-    final ok = await launchUrl(kakaoUrl, mode: LaunchMode.externalApplication);
-    if (ok) {
+    if (result.status == ShareResultStatus.success && provider.isGuest) {
       await provider.markGuestShareTrialUsed();
-      return;
     }
-    await launchUrl(fallback, mode: LaunchMode.externalApplication);
   }
 
+  // 문자: 실제 명함 텍스트를 본문으로
   void _handleSms(BuildContext context) async {
     Navigator.pop(context);
     onRecordSend?.call(_tr('문자(SMS)', 'SMS'));
@@ -73,16 +98,15 @@ class SendCardSheet extends StatelessWidget {
       await LoginBottomSheet.show(context);
       return;
     }
-    final body = Uri.encodeComponent(
-      '${_tr('내 명함:', 'My card:')} $url',
-    );
+    final body = Uri.encodeComponent(_buildCardText());
     final smsUri = Uri.parse('sms:?body=$body');
     final ok = await launchUrl(smsUri, mode: LaunchMode.externalApplication);
-    if (ok) {
+    if (ok && provider.isGuest) {
       await provider.markGuestShareTrialUsed();
     }
   }
 
+  // 이메일: 실제 명함 텍스트를 본문으로
   void _handleEmail(BuildContext context) async {
     Navigator.pop(context);
     onRecordSend?.call(_tr('이메일', 'Email'));
@@ -91,11 +115,16 @@ class SendCardSheet extends StatelessWidget {
       await LoginBottomSheet.show(context);
       return;
     }
-    final subject = Uri.encodeComponent(_tr('명함: $name', 'Card: $name'));
-    final body = Uri.encodeComponent(url);
+    final displayName = cardData?.fullName.trim().isNotEmpty == true
+        ? cardData!.fullName.trim()
+        : name;
+    final subject = Uri.encodeComponent(
+      _tr('$displayName 명함', '$displayName\'s Card'),
+    );
+    final body = Uri.encodeComponent(_buildCardText());
     final mailUri = Uri.parse('mailto:?subject=$subject&body=$body');
     final ok = await launchUrl(mailUri, mode: LaunchMode.externalApplication);
-    if (ok) {
+    if (ok && provider.isGuest) {
       await provider.markGuestShareTrialUsed();
     }
   }

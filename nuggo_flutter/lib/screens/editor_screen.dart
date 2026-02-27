@@ -578,6 +578,7 @@ class _EditorScreenState extends State<EditorScreen>
       url: url,
       name: name,
       language: language,
+      cardData: data,
     );
   }
 
