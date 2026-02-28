@@ -2,7 +2,6 @@ import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/rendering.dart'
     show debugPaintBaselinesEnabled, debugPaintSizeEnabled;
@@ -68,10 +67,6 @@ void _showQrDialog(BuildContext context, AppProvider provider) {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  const kakaoNativeAppKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
-  if (kakaoNativeAppKey.isNotEmpty) {
-    KakaoSdk.init(nativeAppKey: kakaoNativeAppKey);
-  }
   await SharedPreferences.getInstance();
   debugPaintBaselinesEnabled = false;
   debugPaintSizeEnabled = false;
