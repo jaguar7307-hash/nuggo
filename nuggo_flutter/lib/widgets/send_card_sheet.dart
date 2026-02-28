@@ -7,12 +7,12 @@ import 'package:provider/provider.dart';
 
 import '../models/card_data.dart';
 import '../providers/app_provider.dart';
-import '../services/card_url_generator.dart';
+import '../services/card_capture_service.dart';
 import 'business_card_web_view.dart';
 import 'login_bottom_sheet.dart';
 
 /// 공통 명함 보내기 바텀시트
-/// 핵심: URL 공유 (GitHub Pages 인터랙티브 카드) + 채널별 직접 실행
+/// 전송 포맷: PNG 이미지 단독 (URL 텍스트 없이)
 class SendCardSheet extends StatefulWidget {
   final String url;
   final String name;
@@ -61,23 +61,12 @@ class _SendCardSheetState extends State<SendCardSheet> {
 
   String _tr(String ko, String en) => widget.language == 'en' ? en : ko;
 
-  String _buildCardText() {
-    final d = widget.cardData;
-    if (d == null) return widget.name;
-    final lines = <String>[];
-    final parts = <String>[];
-    if (d.fullName.trim().isNotEmpty) parts.add(d.fullName.trim());
-    if (d.jobTitle.trim().isNotEmpty) parts.add(d.jobTitle.trim());
-    if (d.companyName.trim().isNotEmpty) parts.add(d.companyName.trim());
-    if (parts.isNotEmpty) lines.add(parts.join(' | '));
-    if (d.phone.trim().isNotEmpty) lines.add('📞 ${d.phone.trim()}');
-    if (d.email.trim().isNotEmpty) lines.add('✉️ ${d.email.trim()}');
-    if (d.kakao.trim().isNotEmpty) lines.add('💬 ${d.kakao.trim()}');
-    if (d.website.trim().isNotEmpty) lines.add('🔗 ${d.website.trim()}');
-    if (d.address.trim().isNotEmpty) lines.add('📍 ${d.address.trim()}');
-    return lines.isEmpty ? widget.name : lines.join('\n');
-  }
+  String _displayName() =>
+      widget.cardData?.fullName.trim().isNotEmpty == true
+          ? widget.cardData!.fullName.trim()
+          : widget.name;
 
+  // ── 게스트 체크 ──────────────────────────────────────────────────────
   bool _guestCheck(AppProvider provider) {
     if (!provider.canAttemptGuestShare()) {
       LoginBottomSheet.show(context);
@@ -86,6 +75,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
     return true;
   }
 
+  // ── 전송 결과 스낵바 ──────────────────────────────────────────────────
   void _showResult(bool success, String channel, AppProvider provider) {
     if (!mounted) return;
     if (success) {
@@ -106,117 +96,103 @@ class _SendCardSheetState extends State<SendCardSheet> {
     }
   }
 
-  // ── 공통: URL 생성 + 공유 텍스트 ──────────────────────────────────────
-  String _cardUrl() {
-    if (widget.cardData != null) return CardUrlGenerator.generate(widget.cardData!);
-    return widget.url.isNotEmpty ? widget.url : 'https://github.com/jaguar7307-hash/nuggo';
+  // ── 이미지 캡처 (공통) ────────────────────────────────────────────────
+  Future<XFile?> _captureImage() async {
+    if (widget.cardData == null || !mounted) return null;
+    return CardCaptureService.captureCard(context, widget.cardData!);
   }
 
-  String _shareBody() {
-    if (widget.cardData != null) return CardUrlGenerator.shareText(widget.cardData!);
-    return _buildCardText();
-  }
-
-  String _displayName() => widget.cardData?.fullName.trim().isNotEmpty == true
-      ? widget.cardData!.fullName.trim()
-      : widget.name;
-
-  // ── 카카오톡: URL + 인터랙티브 링크 텍스트 → OS 공유시트 ─────────────
-  Future<void> _handleKakao(AppProvider provider) async {
+  // ── 핵심 공유: PNG 이미지 단독 → OS 공유시트 ─────────────────────────
+  Future<void> _shareImage(String channel, AppProvider provider) async {
+    setState(() => _isLoading = true);
+    final imageFile = await _captureImage();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
     Navigator.of(context).pop();
-    final url = _cardUrl();
+
     final name = _displayName();
-    final text = '${name} 님의 디지털 명함\n탭하면 전화/이메일/카카오 바로 연결!\n$url';
+    final subject = _tr('$name 명함', "$name's Card");
 
     ShareResult? result;
     try {
       result = await SharePlus.instance.share(
-        ShareParams(text: text, subject: '$name 명함'),
+        imageFile != null
+            ? ShareParams(files: [imageFile], subject: subject)
+            : ShareParams(text: '$name 명함', subject: subject),
       );
     } catch (_) {
-      await Clipboard.setData(ClipboardData(text: text));
       return;
     }
-    _showResult(result.status == ShareResultStatus.success, '카카오톡', provider);
+    _showResult(result.status == ShareResultStatus.success, channel, provider);
   }
 
   // ── 문자(SMS): sms: URL → Messages 앱 직접 열기 ──────────────────────
   Future<void> _handleSms(AppProvider provider) async {
+    setState(() => _isLoading = true);
+    final imageFile = await _captureImage();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
     Navigator.of(context).pop();
-    final body = Uri.encodeComponent(_shareBody());
-    final uri = Uri.parse('sms:?body=$body');
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        _showResult(true, '문자(SMS)', provider);
-        return;
-      }
-    } catch (_) {}
-    // 실패 → 클립보드 복사
-    await Clipboard.setData(ClipboardData(text: _shareBody()));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_tr('명함 링크를 복사했어요. 문자에 붙여넣기 하세요.', 'Card link copied!')),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
 
-  // ── 이메일: mailto: URL → 메일 앱 직접 열기 ──────────────────────────
-  Future<void> _handleEmail(AppProvider provider) async {
-    Navigator.of(context).pop();
+    // 이미지가 있으면 공유시트로 → 사용자가 Messages 선택
+    if (imageFile != null) {
+      final name = _displayName();
+      ShareResult? result;
+      try {
+        result = await SharePlus.instance.share(
+          ShareParams(files: [imageFile], subject: _tr('$name 명함', "$name's Card")),
+        );
+      } catch (_) {}
+      _showResult(result?.status == ShareResultStatus.success, '문자(SMS)', provider);
+      return;
+    }
+
+    // 이미지 캡처 실패 → SMS 텍스트로 대체
     final name = _displayName();
-    final subject = Uri.encodeComponent(_tr('$name 명함', '$name\'s Card'));
-    final body = Uri.encodeComponent(_shareBody());
-    final uri = Uri.parse('mailto:?subject=$subject&body=$body');
+    final body = Uri.encodeComponent(_tr('$name 님의 명함입니다.', "$name's business card"));
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        _showResult(true, '이메일', provider);
-        return;
-      }
-    } catch (_) {}
-    // 실패 → share_plus OS 공유시트 대체
-    try {
-      await SharePlus.instance.share(
-        ShareParams(text: _shareBody(), subject: '$name 명함'),
-      );
+      final uri = Uri.parse('sms:?body=$body');
+      if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
-      await Clipboard.setData(ClipboardData(text: _shareBody()));
+      await Clipboard.setData(ClipboardData(text: name));
     }
   }
 
-  // ── 웹카드 미리보기 (인터랙티브 WebView) ─────────────────────────────
+  // ── 이메일: 이미지 공유시트 → 사용자가 Mail 선택 ─────────────────────
+  Future<void> _handleEmail(AppProvider provider) async {
+    setState(() => _isLoading = true);
+    final imageFile = await _captureImage();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    Navigator.of(context).pop();
+
+    final name = _displayName();
+    final subject = _tr('$name 명함', "$name's Card");
+
+    if (imageFile != null) {
+      ShareResult? result;
+      try {
+        result = await SharePlus.instance.share(
+          ShareParams(files: [imageFile], subject: subject),
+        );
+      } catch (_) {}
+      _showResult(result?.status == ShareResultStatus.success, '이메일', provider);
+      return;
+    }
+
+    // 이미지 없음 → mailto: 대체
+    final subjectEnc = Uri.encodeComponent(subject);
+    try {
+      final uri = Uri.parse('mailto:?subject=$subjectEnc');
+      if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+  }
+
+  // ── 웹카드 미리보기 ──────────────────────────────────────────────────
   Future<void> _handleWebPreview() async {
     Navigator.of(context).pop();
-    if (!mounted) return;
-    if (widget.cardData != null) {
-      await BusinessCardWebView.show(context, widget.cardData!);
-    }
-  }
-
-  // ── 링크 복사 ──────────────────────────────────────────────────────────
-  Future<void> _handleCopyLink(AppProvider provider) async {
-    Navigator.of(context).pop();
-    final url = _cardUrl();
-    await Clipboard.setData(ClipboardData(text: url));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(children: [
-            const Icon(Icons.link, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text(_tr('링크를 복사했어요!', 'Link copied!')),
-          ]),
-          backgroundColor: const Color(0xFF6366F1),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-    _showResult(true, '링크복사', provider);
+    if (!mounted || widget.cardData == null) return;
+    await BusinessCardWebView.show(context, widget.cardData!);
   }
 
   Future<void> _doShare(String channel) async {
@@ -225,7 +201,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
 
     switch (channel) {
       case '카카오톡':
-        await _handleKakao(provider);
+        await _shareImage('카카오톡', provider);
       case '문자(SMS)':
         await _handleSms(provider);
       case '이메일':
@@ -270,10 +246,9 @@ class _SendCardSheetState extends State<SendCardSheet> {
                 ),
               ),
               const SizedBox(height: 12),
-              // 로딩 중이면 로딩 인디케이터
               if (_isLoading)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  padding: const EdgeInsets.symmetric(vertical: 28),
                   child: Column(
                     children: [
                       const CircularProgressIndicator(
@@ -292,34 +267,20 @@ class _SendCardSheetState extends State<SendCardSheet> {
                   ),
                 )
               else ...[
-                // ① 웹카드 미리보기 (앱 내 인터랙티브 확인)
+                // ① 인터랙티브 미리보기
                 if (widget.cardData != null) ...[
                   _SendOptionTile(
                     icon: Icons.preview_outlined,
                     iconColor: const Color(0xFF6366F1),
                     label: _tr('인터랙티브 카드 미리보기', 'Interactive Card Preview'),
-                    sublabel: _tr('탭하면 전화/이메일/카카오 바로 연결', 'Tap icons to call, email, kakao'),
+                    sublabel: _tr('전화·이메일·카카오 아이콘 탭으로 직접 연결', 'Tap icons to call, email, kakao'),
                     onTap: _handleWebPreview,
                     bgColor: bgColor,
                     textColor: textColor,
                   ),
                   Divider(height: 1, color: dividerColor, indent: 72, endIndent: 24),
                 ],
-                // ② 링크 복사 (URL 복사해서 아무 앱에나 붙여넣기)
-                _SendOptionTile(
-                  icon: Icons.link,
-                  iconColor: const Color(0xFF6366F1),
-                  label: _tr('링크 복사', 'Copy Link'),
-                  sublabel: _tr('받는 분이 탭하면 인터랙티브 명함 열림', 'Recipient taps to open interactive card'),
-                  onTap: () {
-                    final provider = context.read<AppProvider>();
-                    if (_guestCheck(provider)) _handleCopyLink(provider);
-                  },
-                  bgColor: bgColor,
-                  textColor: textColor,
-                ),
-                Divider(height: 1, color: dividerColor, indent: 72, endIndent: 24),
-                // ③ 카카오톡
+                // ② 카카오톡
                 _SendOptionTile(
                   icon: Icons.chat_bubble_outline,
                   iconColor: const Color(0xFFFFE000),
@@ -329,7 +290,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
                   textColor: textColor,
                 ),
                 Divider(height: 1, color: dividerColor, indent: 72, endIndent: 24),
-                // ④ 문자
+                // ③ 문자
                 _SendOptionTile(
                   icon: Icons.sms_outlined,
                   iconColor: Colors.green.shade600,
@@ -339,7 +300,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
                   textColor: textColor,
                 ),
                 Divider(height: 1, color: dividerColor, indent: 72, endIndent: 24),
-                // ⑤ 이메일
+                // ④ 이메일
                 _SendOptionTile(
                   icon: Icons.email_outlined,
                   iconColor: Colors.red.shade500,
