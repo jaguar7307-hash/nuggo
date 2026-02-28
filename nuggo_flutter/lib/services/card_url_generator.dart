@@ -8,9 +8,9 @@ import '../models/card_data.dart';
 /// 받는 사람이 URL 탭 → 브라우저에서 열림 → 앱 미리보기와 동일한 인터랙티브 카드
 /// 전화/이메일/카카오 아이콘 탭 → 해당 앱 즉시 실행
 class CardUrlGenerator {
-  // TODO: GitHub Pages 배포 완료 후 실제 URL로 교체
+  // nuggo 리포의 GitHub Pages (nuggo-card/ 폴더가 루트로 배포됨)
   static const String _baseUrl =
-      'https://jaguar7307-hash.github.io/nuggo-card/';
+      'https://jaguar7307-hash.github.io/nuggo/';
 
   /// 카드 URL 생성 (단축 키로 URL 길이 최소화)
   ///
