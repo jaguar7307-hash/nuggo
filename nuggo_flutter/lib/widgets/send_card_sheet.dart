@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 
 import '../models/card_data.dart';
 import '../providers/app_provider.dart';
+import '../services/card_capture_service.dart';
 import '../services/card_url_generator.dart';
 import 'login_bottom_sheet.dart';
 
@@ -100,130 +99,50 @@ class _SendCardSheetState extends State<SendCardSheet> {
       ? CardUrlGenerator.generate(widget.cardData!)
       : 'https://jaguar7307-hash.github.io/nuggo/card.html';
 
-  // ── 카카오톡: FeedTemplate → 카드 이미지 + [명함 보기] 버튼 ─────────────────
-  Future<void> _handleKakao(AppProvider provider) async {
-    Navigator.of(context).pop();
-    final url = _cardUrl();
-    final name = _displayName();
-    final data = widget.cardData;
-    final desc = [data?.jobTitle, data?.companyName]
-        .where((s) => s != null && s.trim().isNotEmpty)
-        .join(' · ');
-
-    bool success = false;
-    try {
-      final feed = FeedTemplate(
-        content: Content(
-          title: '$name 님의 디지털 명함',
-          description: desc.isNotEmpty ? desc : '탭하면 전화·이메일·카카오 바로 연결!',
-          imageUrl: Uri.parse(
-            'https://jaguar7307-hash.github.io/nuggo/og-card.png',
-          ),
-          link: Link(
-            webUrl: Uri.parse(url),
-            mobileWebUrl: Uri.parse(url),
-          ),
-        ),
-        buttons: [
-          Button(
-            title: '명함 보기 →',
-            link: Link(
-              webUrl: Uri.parse(url),
-              mobileWebUrl: Uri.parse(url),
-            ),
-          ),
-        ],
-      );
-
-      final available = await ShareClient.instance.isKakaoTalkSharingAvailable();
-      if (available) {
-        final uri = await ShareClient.instance.shareDefault(template: feed);
-        await ShareClient.instance.launchKakaoTalk(uri);
-        success = true;
-      } else {
-        final shareUrl = await WebSharerClient.instance.makeDefaultUrl(template: feed);
-        if (await canLaunchUrl(shareUrl)) {
-          await launchUrl(shareUrl, mode: LaunchMode.externalApplication);
-        }
-        success = true;
-      }
-    } catch (_) {
-      // SDK 실패 → OS 공유시트로 URL 공유
-      try {
-        final result = await SharePlus.instance.share(
-          ShareParams(text: url, subject: '$name 명함'),
-        );
-        success = result.status == ShareResultStatus.success;
-      } catch (_) {
-        await Clipboard.setData(ClipboardData(text: url));
-      }
-    }
-    if (mounted) _showResult(success, '카카오톡', provider);
-  }
-
-  // ── 문자(SMS): sms: 직접 실행 (URL 포함 텍스트) ──────────────────────
-  Future<void> _handleSms(AppProvider provider) async {
-    Navigator.of(context).pop();
-    final name = _displayName();
-    final url = _cardUrl();
-    final body = Uri.encodeComponent('$name 님의 디지털 명함\n$url');
-    bool launched = false;
-    try {
-      final uri = Uri.parse('sms:?body=$body');
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        launched = true;
-      }
-    } catch (_) {}
-    if (!launched) {
-      // SMS 실패 → OS 공유시트
-      try {
-        await SharePlus.instance.share(
-          ShareParams(text: '$name 님의 디지털 명함\n$url'),
-        );
-      } catch (_) {
-        await Clipboard.setData(ClipboardData(text: url));
-      }
-    }
-    _showResult(launched, '문자(SMS)', provider);
-  }
-
-  // ── 이메일: mailto: 직접 실행 (URL 포함 본문) ────────────────────────
-  Future<void> _handleEmail(AppProvider provider) async {
-    Navigator.of(context).pop();
-    final name = _displayName();
-    final url = _cardUrl();
-    final subject = Uri.encodeComponent(_tr('$name 님의 디지털 명함', "$name's Digital Card"));
-    final body = Uri.encodeComponent('$name 님의 명함을 공유합니다.\n\n아래 링크를 탭하면 전화·이메일·카카오 바로 연결됩니다.\n$url');
-    bool launched = false;
-    try {
-      final uri = Uri.parse('mailto:?subject=$subject&body=$body');
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        launched = true;
-      }
-    } catch (_) {}
-    if (!launched) {
-      try {
-        await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함\n$url'));
-      } catch (_) {
-        await Clipboard.setData(ClipboardData(text: url));
-      }
-    }
-    _showResult(launched, '이메일', provider);
-  }
-
+  // ── 공통: 명함 이미지 캡처 후 OS 공유시트로 전송 ─────────────────────
   Future<void> _doShare(String channel) async {
     final provider = context.read<AppProvider>();
     if (!_guestCheck(provider)) return;
 
-    switch (channel) {
-      case '카카오톡':
-        await _handleKakao(provider);
-      case '문자(SMS)':
-        await _handleSms(provider);
-      case '이메일':
-        await _handleEmail(provider);
+    final data = widget.cardData;
+    if (data == null) return;
+
+    setState(() => _isLoading = true);
+    XFile? imageFile;
+    try {
+      imageFile = await CardCaptureService.captureCard(context, data);
+    } catch (_) {}
+
+    if (!mounted) return;
+    Navigator.of(context).pop();
+
+    bool success = false;
+    try {
+      if (imageFile != null) {
+        // 이미지 공유: 카카오·문자·이메일 모두 PNG 이미지로 전송
+        final result = await SharePlus.instance.share(
+          ShareParams(files: [imageFile]),
+        );
+        success = result.status == ShareResultStatus.success ||
+            result.status == ShareResultStatus.dismissed;
+      } else {
+        // 이미지 캡처 실패 시 URL 텍스트 폴백
+        final url = _cardUrl();
+        final name = _displayName();
+        final result = await SharePlus.instance.share(
+          ShareParams(text: '$name 님의 디지털 명함\n$url'),
+        );
+        success = result.status == ShareResultStatus.success;
+      }
+    } catch (_) {
+      try {
+        await Clipboard.setData(ClipboardData(text: _cardUrl()));
+      } catch (_) {}
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      _showResult(success, channel, provider);
     }
   }
 
