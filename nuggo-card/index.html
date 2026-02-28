@@ -83,54 +83,6 @@
     /* 이미지 위 미세 오버레이 */
     .card-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.05); }
 
-    /* ── 썸네일 잠금 오버레이 (최초 접속 시) ── */
-    #unlock-overlay {
-      position: absolute; inset: 0;
-      z-index: 20;
-      border-radius: 32px;
-      background: rgba(0,0,0,0.48);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      cursor: pointer;
-      transition: opacity 0.35s ease;
-    }
-    #unlock-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-    #unlock-overlay .touch-icon {
-      font-size: 44px;
-      color: rgba(255,255,255,0.9);
-      animation: tap-pulse 1.6s ease-in-out infinite;
-    }
-    #unlock-overlay .unlock-label {
-      font-family: 'Manrope', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      color: rgba(255,255,255,0.85);
-    }
-    @keyframes tap-pulse {
-      0%, 100% { transform: scale(1);    opacity: 0.9; }
-      50%       { transform: scale(1.18); opacity: 0.6; }
-    }
-
-    /* 잠금 상태에서는 액션 아이콘 비활성 */
-    .card-locked .action-icon { pointer-events: none; }
-    /* 해제 후 아이콘 등장 애니 */
-    .card-unlocked .action-icon {
-      animation: icon-pop 0.3s ease forwards;
-    }
-    @keyframes icon-pop {
-      from { transform: scale(0.85); opacity: 0.5; }
-      to   { transform: scale(1);    opacity: 1; }
-    }
-
     /* 콘텐츠 레이어 */
     .card-content {
       position: relative; z-index: 1;
@@ -163,8 +115,9 @@
     .icon-row    { display: flex; width: 100%; justify-content: space-evenly; }
 
     /* 아이콘 버튼 (Flutter _ActionIcon 재현, 터치 48px 이상) */
-    .action-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; flex: 1; text-decoration: none; min-height: 48px; cursor: pointer; }
-    .action-icon.disabled { pointer-events: none; }
+    .action-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; flex: 1; text-decoration: none; min-height: 48px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .action-icon:active { opacity: 0.6; transform: scale(0.93); }
+    .action-icon.disabled { pointer-events: none; opacity: 0.3; }
 
     /* 32×32 원형 컨테이너 */
     .icon-circle {
@@ -250,14 +203,9 @@
   <div class="logo"><span class="nug">NUG</span><span class="go">GO</span></div>
 
   <div class="card-wrapper">
-    <div class="card card-locked" id="card">
+    <div class="card" id="card">
       <div class="card-content" id="card-content">
         <!-- JS 렌더링 -->
-      </div>
-      <!-- 썸네일 잠금 오버레이: 탭하면 인터랙티브 카드로 전환 -->
-      <div id="unlock-overlay">
-        <span class="material-icons-round touch-icon">touch_app</span>
-        <span class="unlock-label">탭하여 명함 열기</span>
       </div>
     </div>
   </div>
@@ -602,25 +550,12 @@
     document.getElementById('btn-group').style.display = 'flex';
     document.getElementById('btn-contact').addEventListener('click', downloadVCard);
 
-    // 나도 명함 만들기: 플랫폼별 스토어 링크
+    // 나도 명함 만들기: 플랫폼별 링크 (앱 출시 전 임시)
     document.getElementById('btn-make').addEventListener('click', function(e) {
       e.preventDefault();
       var ua = navigator.userAgent || '';
-      if      (/android/i.test(ua))         { location.href = 'https://play.google.com/store/apps/details?id=com.nuggo.nuggo_flutter'; }
-      else if (/iPad|iPhone|iPod/.test(ua)) { location.href = 'https://apps.apple.com/app/nuggo/id000000000'; }
-      else                                  { location.href = 'https://nuggo.me'; }
-    });
-
-    // ── 썸네일 → 인터랙티브 전환 ─────────────────────────────
-    var overlay = document.getElementById('unlock-overlay');
-    var card    = document.getElementById('card');
-
-    overlay.addEventListener('click', function() {
-      overlay.classList.add('hidden');
-      card.classList.remove('card-locked');
-      card.classList.add('card-unlocked');
-      // 오버레이 완전히 사라진 후 DOM 제거
-      setTimeout(function() { overlay.remove(); }, 400);
+      // TODO: 앱 출시 후 실제 스토어 링크로 교체
+      location.href = 'https://github.com/jaguar7307-hash/nuggo';
     });
 
   } else {
