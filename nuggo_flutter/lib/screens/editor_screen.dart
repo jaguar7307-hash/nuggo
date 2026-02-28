@@ -2356,9 +2356,16 @@ class _EditorScreenState extends State<EditorScreen>
         ? null
         : provider.savedProfiles.where((p) => p.id == activeId).firstOrNull;
     final isUpdateMode = activeProfile != null;
-    final nameController = TextEditingController(
-      text: activeProfile?.name ?? '',
-    );
+
+    // 기존 프로필명 OR 이름 OR '내 명함' 순으로 기본값 자동 입력
+    final defaultName = activeProfile?.name
+        ?? (provider.currentCardData.fullName.trim().isNotEmpty
+            ? provider.currentCardData.fullName.trim()
+            : '내 명함');
+    final nameController = TextEditingController(text: defaultName)
+      ..selection = TextSelection(
+        baseOffset: 0, extentOffset: defaultName.length,
+      );
 
     Future<void> saveAs(
       BuildContext dialogContext, {
@@ -2396,13 +2403,8 @@ class _EditorScreenState extends State<EditorScreen>
       builder: (dialogContext) {
         final mq = MediaQuery.of(dialogContext);
         final maxW = (mq.size.width - 56).clamp(240.0, 300.0);
-        final keyboardInset = mq.viewInsets.bottom;
-        return AnimatedPadding(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(bottom: keyboardInset + 12),
-          child: AlertDialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+        return AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
             scrollable: true,
             title: Text(
               isUpdateMode
@@ -2465,7 +2467,6 @@ class _EditorScreenState extends State<EditorScreen>
                 ),
               ),
             ],
-          ),
         );
     },
     );

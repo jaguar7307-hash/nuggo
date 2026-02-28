@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 import '../models/card_data.dart';
 import '../providers/app_provider.dart';
 import '../services/card_url_generator.dart';
-import 'business_card_web_view.dart';
 import 'login_bottom_sheet.dart';
 
 /// 공통 명함 보내기 바텀시트
@@ -214,13 +213,6 @@ class _SendCardSheetState extends State<SendCardSheet> {
     _showResult(launched, '이메일', provider);
   }
 
-  // ── 웹카드 미리보기 ──────────────────────────────────────────────────
-  Future<void> _handleWebPreview() async {
-    Navigator.of(context).pop();
-    if (!mounted || widget.cardData == null) return;
-    await BusinessCardWebView.show(context, widget.cardData!);
-  }
-
   Future<void> _doShare(String channel) async {
     final provider = context.read<AppProvider>();
     if (!_guestCheck(provider)) return;
@@ -293,20 +285,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
                   ),
                 )
               else ...[
-                // ① 인터랙티브 미리보기
-                if (widget.cardData != null) ...[
-                  _SendOptionTile(
-                    icon: Icons.preview_outlined,
-                    iconColor: const Color(0xFF6366F1),
-                    label: _tr('인터랙티브 카드 미리보기', 'Interactive Card Preview'),
-                    sublabel: _tr('전화·이메일·카카오 아이콘 탭으로 직접 연결', 'Tap icons to call, email, kakao'),
-                    onTap: _handleWebPreview,
-                    bgColor: bgColor,
-                    textColor: textColor,
-                  ),
-                  Divider(height: 1, color: dividerColor, indent: 72, endIndent: 24),
-                ],
-                // ② 카카오톡
+                // ① 카카오톡
                 _SendOptionTile(
                   icon: Icons.chat_bubble_outline,
                   iconColor: const Color(0xFFFFE000),
@@ -348,7 +327,6 @@ class _SendOptionTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String label;
-  final String? sublabel;
   final VoidCallback onTap;
   final Color bgColor;
   final Color textColor;
@@ -357,7 +335,6 @@ class _SendOptionTile extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.label,
-    this.sublabel,
     required this.onTap,
     required this.bgColor,
     required this.textColor,
@@ -395,16 +372,6 @@ class _SendOptionTile extends StatelessWidget {
                         color: textColor,
                       ),
                     ),
-                    if (sublabel != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        sublabel!,
-                        style: GoogleFonts.manrope(
-                          fontSize: 11,
-                          color: textColor.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
