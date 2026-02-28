@@ -435,15 +435,17 @@
       ? d.shareLink
       : (d.website && d.website.startsWith('http') ? d.website : '');
 
-    // 전화번호 정리
-    var phoneNum = (d.phone || '').replace(/[\s\-\(\)]/g, '');
-    var smsNum   = ((d.sms || d.phone) || '').replace(/[\s\-\(\)]/g, '');
+    // 전화번호 정리 (명함 소유자 번호만 사용 - 수신자 번호 아님)
+    var phoneRaw = (d.phone || '').trim();
+    var smsRaw   = ((d.sms || d.phone) || '').trim();
+    var phoneNum = phoneRaw.replace(/\D/g, '');
+    var smsNum   = smsRaw.replace(/\D/g, '');
 
     // 행 1: 전화 / 문자 / 이메일
     var row1 = document.createElement('div'); row1.className = 'icon-row';
     row1.append(
-      makeIcon('phone',       'PHONE',   phoneNum ? 'tel:'    + phoneNum           : '', !!phoneNum,           iconColor, isLight),
-      makeIcon('chat_bubble', 'MESSAGE', smsNum   ? 'sms:'    + smsNum             : '', !!smsNum,             iconColor, isLight),
+      makeIcon('phone',       'PHONE',   phoneNum.length >= 9 ? 'tel:' + phoneNum : '', phoneNum.length >= 9, iconColor, isLight),
+      makeIcon('chat_bubble', 'MESSAGE', smsNum.length >= 9   ? 'sms:' + smsNum   : '', smsNum.length >= 9,   iconColor, isLight),
       makeIcon('mail',        'EMAIL',   d.email  ? 'mailto:' + d.email            : '', !!d.email,            iconColor, isLight)
     );
 

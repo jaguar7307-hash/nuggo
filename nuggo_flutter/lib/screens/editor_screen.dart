@@ -24,6 +24,7 @@ import '../widgets/business_card.dart';
 import '../widgets/card_display.dart';
 import 'package:share_plus/share_plus.dart';
 import '../widgets/login_bottom_sheet.dart';
+import '../widgets/send_card_sheet.dart';
 import '../services/card_url_generator.dart';
 
 class EditorScreen extends StatefulWidget {
@@ -571,31 +572,16 @@ class _EditorScreenState extends State<EditorScreen>
       if (context.mounted) await LoginBottomSheet.show(context);
       return;
     }
-    // 에디터에 렌더링된 카드 이미지로 캡처 후 OS 공유
-    try {
-      final boundary = _cardRepaintKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-      if (boundary != null) {
-        final img = await boundary.toImage(pixelRatio: 3.0);
-        final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-        if (byteData != null && context.mounted) {
-          final bytes = byteData.buffer.asUint8List();
-          final dir = await getTemporaryDirectory();
-          final safeName = data.fullName.trim().isEmpty
-              ? 'card'
-              : data.fullName.trim().replaceAll(RegExp(r'[^\w가-힣]'), '_');
-          final file = File('${dir.path}/${safeName}_nuggo.png');
-          await file.writeAsBytes(bytes);
-          final webUrl = CardUrlGenerator.generate(data);
-          await SharePlus.instance.share(ShareParams(text: webUrl));
-          return;
-        }
-      }
-    } catch (_) {}
-    // 캡처 실패 시 URL 폴백
     if (!context.mounted) return;
     final webUrl = CardUrlGenerator.generate(data);
-    await SharePlus.instance.share(ShareParams(text: webUrl));
+    final name = data.fullName.trim().isEmpty ? 'NUGGO' : data.fullName.trim();
+    SendCardSheet.show(
+      context,
+      url: webUrl,
+      name: name,
+      language: provider.settings.language,
+      cardData: data,
+    );
   }
 
   void _showQrDialogFromEditor(BuildContext context, AppProvider provider) {

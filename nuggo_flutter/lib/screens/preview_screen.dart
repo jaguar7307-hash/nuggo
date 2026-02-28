@@ -16,6 +16,7 @@ import '../providers/app_provider.dart';
 import '../models/card_data.dart';
 import '../widgets/nuggo_logo.dart';
 import '../widgets/login_bottom_sheet.dart';
+import '../widgets/send_card_sheet.dart';
 import '../services/card_url_generator.dart';
 
 /// 원본 React PreviewView와 동일: 풀스크린 명함 배경 + 로고/슬로건/이름/3x2 액션/주소/하단 CTA
@@ -315,7 +316,14 @@ class _PreviewScreenState extends State<PreviewScreen> {
       }
       if (!mounted) return;
       final webUrl = CardUrlGenerator.generate(data);
-      await SharePlus.instance.share(ShareParams(text: webUrl));
+      final name = data.fullName.trim().isEmpty ? 'NUGGO' : data.fullName.trim();
+      SendCardSheet.show(
+        context,
+        url: webUrl,
+        name: name,
+        language: provider.settings.language,
+        cardData: data,
+      );
       return;
     }
     if (type == 'mail') {
@@ -482,9 +490,18 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 return;
                               }
                               final webUrl = CardUrlGenerator.generate(data);
-                              await SharePlus.instance.share(
-                                ShareParams(text: webUrl),
-                              );
+                              final name = data.fullName.trim().isEmpty
+                                  ? 'NUGGO'
+                                  : data.fullName.trim();
+                              if (context.mounted) {
+                                SendCardSheet.show(
+                                  context,
+                                  url: webUrl,
+                                  name: name,
+                                  language: provider.settings.language,
+                                  cardData: data,
+                                );
+                              }
                             },
                           ),
                           const SizedBox(width: 4),

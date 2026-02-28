@@ -22,6 +22,7 @@ import '../widgets/digital_card.dart';
 import '../widgets/business_card.dart' show kBusinessCardAspectRatio;
 import '../widgets/card_display.dart';
 import '../widgets/login_bottom_sheet.dart';
+import '../widgets/send_card_sheet.dart';
 import '../services/card_url_generator.dart';
 
 /// ?? ?? ?? (CRM?)
@@ -1075,23 +1076,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-    final imageFile = await _captureCard(selected.data);
-    if (!context.mounted) return;
-
     final name = selected.data.fullName.isEmpty
         ? selected.name
         : selected.data.fullName;
-
     final webUrl = CardUrlGenerator.generate(selected.data);
 
-    await SharePlus.instance.share(ShareParams(text: webUrl));
-    setState(() {
-      _recentSends.insert(0, _RecentSendItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: name, method: '링크 공유', time: '방금 전',
-        revisitCount: 0, viewCount: 0, phone: selected.data.phone,
-      ));
-    });
+    if (!context.mounted) return;
+    SendCardSheet.show(
+      context,
+      url: webUrl,
+      name: name,
+      language: language,
+      cardData: selected.data,
+      onRecordSend: (method) {
+        setState(() {
+          _recentSends.insert(0, _RecentSendItem(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            name: name, method: method, time: '방금 전',
+            revisitCount: 0, viewCount: 0, phone: selected.data.phone,
+          ));
+        });
+      },
+    );
   }
 
   Future<void> _shareCard(
