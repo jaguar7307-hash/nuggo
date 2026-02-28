@@ -213,7 +213,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                _tr('받는 분이 명함 이미지를 보고 탭하면 바로 연결돼요', 'Recipient sees a preview and taps to connect'),
+                _tr('QR 코드 스캔으로 인터랙티브 웹 명함 오픈', 'Scan QR to open interactive web card'),
                 style: GoogleFonts.manrope(
                   fontSize: 11,
                   color: textColor.withValues(alpha: 0.5),

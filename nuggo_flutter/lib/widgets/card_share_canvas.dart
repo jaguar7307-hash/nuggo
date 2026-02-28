@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../models/card_data.dart';
+import '../services/card_url_generator.dart';
 import 'business_card.dart';
 
 /// 공유용 PNG 이미지 캔버스 (CardCaptureService에서 오프스크린 렌더링)
-/// 레이아웃: [상단 여백] + [명함 카드] + [하단 버튼 2개] + [하단 여백]
+/// 레이아웃: [상단 여백] + [세로형 명함] + [QR + 버튼 푸터] + [하단 여백]
 class CardShareCanvas extends StatelessWidget {
   final CardData data;
 
-  // 카드 비율: kBusinessCardAspectRatio = 242.55/388.08 ≈ 0.625 (세로형)
+  // 세로형 카드 비율: kBusinessCardAspectRatio ≈ 0.625 (width/height)
   static const double canvasWidth = 400.0;
-  static const double cardWidth = 340.0;
-  // 세로형: height = width / (width/height 비율) = width * 1.6
-  static const double cardHeight = cardWidth / kBusinessCardAspectRatio; // ≈ 544
-  static const double footerHeight = 76.0;
-  static const double canvasHeight = 28 + cardHeight + 14 + footerHeight + 20;
+  static const double cardWidth = 320.0;
+  static const double cardHeight = cardWidth / kBusinessCardAspectRatio; // ≈ 512
+  static const double footerHeight = 128.0;
+  static const double canvasHeight = 24 + cardHeight + 16 + footerHeight + 24;
 
   const CardShareCanvas({super.key, required this.data});
 
@@ -24,6 +25,15 @@ class CardShareCanvas extends StatelessWidget {
     final bool isLight = _isLightTheme(data.theme);
     final bgColor =
         isLight ? const Color(0xFFF0F0F5) : const Color(0xFF0D1117);
+    final cardBg = isLight ? Colors.white : const Color(0xFF1E2530);
+    final textColor = isLight ? const Color(0xFF111827) : Colors.white;
+    final subColor =
+        isLight ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
+    final borderColor = isLight
+        ? Colors.black.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.10);
+
+    final webUrl = CardUrlGenerator.generate(data);
 
     return SizedBox(
       width: canvasWidth,
@@ -34,10 +44,9 @@ class CardShareCanvas extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
-            // ── 명함 카드 ──────────────────────────────────────
-            // ClipRect + SizedBox로 BusinessCard를 정확한 크기로 잘라냄
+            // ── 명함 카드 (세로형) ──────────────────────────────────────
             ClipRRect(
               borderRadius: BorderRadius.circular(24),
               child: SizedBox(
@@ -59,40 +68,176 @@ class CardShareCanvas extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
 
-            // ── 하단 버튼 2개 ──────────────────────────────────
+            // ── 푸터: QR + 버튼 2개 ──────────────────────────────────
             SizedBox(
               width: canvasWidth - 32,
               height: footerHeight,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 왼쪽: 명함 열기
-                  Expanded(
-                    child: _FooterButton(
-                      icon: Icons.credit_card_rounded,
-                      label: '명함 열기',
-                      sublabel: '아이콘 탭으로 연결',
-                      iconColor: const Color(0xFF6366F1),
-                      isLight: isLight,
+                  // ── 좌: QR 코드 ────────────────────────────────────
+                  Container(
+                    width: 114,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderColor),
+                    ),
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        QrImageView(
+                          data: webUrl,
+                          version: QrVersions.auto,
+                          size: 84,
+                          backgroundColor: Colors.white,
+                          errorCorrectionLevel: QrErrorCorrectLevel.M,
+                          eyeStyle: const QrEyeStyle(
+                            eyeShape: QrEyeShape.square,
+                            color: Colors.black,
+                          ),
+                          dataModuleStyle: const QrDataModuleStyle(
+                            dataModuleShape: QrDataModuleShape.square,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '웹 명함 열기',
+                          style: GoogleFonts.notoSansKr(
+                            fontSize: 8,
+                            color: const Color(0xFF6366F1),
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
+
                   const SizedBox(width: 10),
-                  // 오른쪽: 나도 명함 만들기
+
+                  // ── 우: 버튼 2개 (세로 배열) ───────────────────────
                   Expanded(
-                    child: _FooterButton(
-                      icon: Icons.add_card_rounded,
-                      label: '나도 명함 만들기',
-                      sublabel: 'NUGGO 앱 다운로드',
-                      iconColor: const Color(0xFF10B981),
-                      isLight: isLight,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // ① 명함 열기 (QR 안내)
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: borderColor),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              children: [
+                                const Text('🪪',
+                                    style: TextStyle(fontSize: 22)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '명함 열기',
+                                        style: GoogleFonts.notoSansKr(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: textColor,
+                                        ),
+                                        maxLines: 1,
+                                      ),
+                                      Text(
+                                        'QR 스캔 → 전화·이메일 연결',
+                                        style: GoogleFonts.manrope(
+                                          fontSize: 9,
+                                          color: subColor,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // ② 나도 명함 만들기 (앱 다운로드)
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6366F1)
+                                  .withValues(alpha: isLight ? 0.10 : 0.20),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(0xFF6366F1)
+                                    .withValues(alpha: 0.30),
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              children: [
+                                const Text('📲',
+                                    style: TextStyle(fontSize: 22)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '나도 명함 만들기',
+                                        style: GoogleFonts.notoSansKr(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF6366F1),
+                                        ),
+                                        maxLines: 1,
+                                      ),
+                                      Text(
+                                        'NUGGO 앱 무료 다운로드',
+                                        style: GoogleFonts.manrope(
+                                          fontSize: 9,
+                                          color: const Color(0xFF818CF8),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -108,88 +253,5 @@ class CardShareCanvas extends StatelessWidget {
     final g = int.tryParse(full.substring(2, 4), radix: 16) ?? 0;
     final b = int.tryParse(full.substring(4, 6), radix: 16) ?? 0;
     return ((r * 299) + (g * 587) + (b * 114)) / 1000 >= 128;
-  }
-}
-
-class _FooterButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String sublabel;
-  final Color iconColor;
-  final bool isLight;
-
-  const _FooterButton({
-    required this.icon,
-    required this.label,
-    required this.sublabel,
-    required this.iconColor,
-    required this.isLight,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bgColor =
-        isLight ? Colors.white : const Color(0xFF1E2530);
-    final textColor =
-        isLight ? const Color(0xFF111827) : Colors.white;
-    final subColor =
-        isLight ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
-
-    return Container(
-      height: 76,
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isLight
-              ? Colors.black.withValues(alpha: 0.06)
-              : Colors.white.withValues(alpha: 0.08),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.notoSansKr(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  sublabel,
-                  style: GoogleFonts.manrope(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w500,
-                    color: subColor,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
