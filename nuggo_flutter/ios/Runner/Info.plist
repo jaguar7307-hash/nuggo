@@ -73,6 +73,21 @@
 		<string>mailto</string>
 		<string>https</string>
 		<string>http</string>
+		<string>kakaotalk</string>
+		<string>kakao7c0b5a1fa75d6fe73b650b00005acc03</string>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kakao7c0b5a1fa75d6fe73b650b00005acc03</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>kakaolink</string>
+		</dict>
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>

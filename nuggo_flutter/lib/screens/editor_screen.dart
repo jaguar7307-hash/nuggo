@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
+
+import 'package:image_cropper/image_cropper.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +10,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../providers/app_provider.dart';
@@ -17,6 +22,7 @@ import '../constants/theme.dart';
 import '../widgets/business_card.dart';
 import '../widgets/card_display.dart';
 import '../widgets/send_card_sheet.dart';
+import '../widgets/login_bottom_sheet.dart';
 
 class EditorScreen extends StatefulWidget {
   const EditorScreen({super.key});
@@ -55,6 +61,8 @@ class _EditorScreenState extends State<EditorScreen>
   bool _sloganDefaultSet = false;
   String? _pendingDefaultSlogan;
   bool _aiSloganLoading = false;
+  bool _aiBackgroundLoading = false;
+  List<String> _aiRecommendedImages = [];
   bool _sloganKoreanMode = true;
   bool _formReady = true;
   bool _basicProfileToastShown = false;
@@ -543,8 +551,23 @@ class _EditorScreenState extends State<EditorScreen>
     );
   }
 
-  void _shareCardFromEditor(BuildContext context, AppProvider provider) {
+  Future<void> _shareCardFromEditor(BuildContext context, AppProvider provider) async {
     final data = provider.selectedProfile?.data ?? provider.currentCardData;
+    final prereq = provider.validateGuestSharePrerequisites(data);
+    if (prereq != null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(prereq),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (!provider.canAttemptGuestShare()) {
+      if (context.mounted) await LoginBottomSheet.show(context);
+      return;
+    }
     String url = data.shareLink.trim();
     if (url.isEmpty) url = 'https://nuggo.me';
     if (!url.startsWith('http')) url = 'https://$url';
@@ -555,11 +578,23 @@ class _EditorScreenState extends State<EditorScreen>
       url: url,
       name: name,
       language: language,
+      cardData: data,
     );
   }
 
   void _showQrDialogFromEditor(BuildContext context, AppProvider provider) {
     final data = provider.selectedProfile?.data ?? provider.currentCardData;
+    final prereq = provider.validateGuestSharePrerequisites(data);
+    if (prereq != null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(prereq),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     String url = data.shareLink.trim();
     if (url.isEmpty) url = 'https://nuggo.me';
     if (!url.startsWith('http')) url = 'https://$url';
@@ -691,14 +726,22 @@ class _EditorScreenState extends State<EditorScreen>
 
           const SizedBox(height: 12),
 
-          // Theme Templates (3% 축소: 100→97, 64→62)
+          // Theme Templates + AI 추천 카드 + 내 사진 올리기 (순서대로 맨 끝)
           SizedBox(
             height: 97,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
-              itemCount: AppConstants.themeTemplates[_activeThemeTab]!.length,
+              itemCount: AppConstants.themeTemplates[_activeThemeTab]!.length + 2,
               itemBuilder: (context, index) {
+                final templateCount =
+                    AppConstants.themeTemplates[_activeThemeTab]!.length;
+                if (index == templateCount) {
+                  return _buildAiRecommendCard(context, provider, data);
+                }
+                if (index == templateCount + 1) {
+                  return _buildUploadPhotoCard(context, provider, data);
+                }
                 final theme =
                     AppConstants.themeTemplates[_activeThemeTab]![index];
                 final isSelected = data.theme == theme;
@@ -747,9 +790,336 @@ class _EditorScreenState extends State<EditorScreen>
               },
             ),
           ),
+
+          // AI 추천 이미지 결과 (3장)
+          if (_aiRecommendedImages.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildAiImageResults(context, provider, data),
+          ],
         ],
       ),
     );
+  }
+
+  Widget _buildAiRecommendCard(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+  ) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _aiBackgroundLoading
+          ? null
+          : () => _onAiBackgroundTap(context, provider, data),
+      child: Container(
+        width: 62,
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF6366F1), Color(0xFFA78BFA)],
+          ),
+          border: Border.all(
+            color: AppTheme.primary.withValues(alpha: 0.5),
+            width: 1.5,
+          ),
+        ),
+        child: _aiBackgroundLoading
+            ? const Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.auto_awesome, size: 22, color: Colors.white),
+                  const SizedBox(height: 4),
+                  Text(
+                    'AI 추천',
+                    style: GoogleFonts.notoSansKr(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildUploadPhotoCard(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+  ) {
+    final rawPath = data.theme.replaceFirst('file://', '');
+    final isLocalSelected = (data.theme.startsWith('/') || data.theme.startsWith('file://')) &&
+        File(rawPath).existsSync();
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _pickBackgroundImage(context, provider, data),
+      child: Container(
+        width: 62,
+        margin: const EdgeInsets.only(right: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isLocalSelected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey.shade400,
+            width: isLocalSelected ? 2 : 1.5,
+            style: isLocalSelected ? BorderStyle.solid : BorderStyle.solid,
+          ),
+          color: Colors.grey.shade50,
+          image: isLocalSelected
+              ? DecorationImage(
+                  image: FileImage(File(rawPath)),
+                  fit: BoxFit.cover,
+                )
+              : null,
+        ),
+        child: isLocalSelected
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.black.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  Center(
+                    child: Icon(
+                      Icons.check_circle_outline,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 28,
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_photo_alternate_outlined,
+                      size: 24, color: Colors.grey.shade500),
+                  const SizedBox(height: 4),
+                  Text(
+                    '내 사진',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildAiImageResults(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+  ) {
+    const labels = ['일반', '비즈니스', '패턴'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.auto_awesome, size: 13, color: AppTheme.primary),
+            const SizedBox(width: 4),
+            Text(
+              'AI 추천 배경',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primary,
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => setState(() => _aiRecommendedImages = []),
+              child: Icon(Icons.close, size: 16, color: Colors.grey.shade400),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 97,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: _aiRecommendedImages.length,
+            itemBuilder: (context, index) {
+              final url = _aiRecommendedImages[index];
+              final isSelected = data.theme == url;
+              return GestureDetector(
+                onTap: () => provider.updateCardData(data.copyWith(theme: url)),
+                child: Container(
+                  width: 62,
+                  margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey.shade300,
+                      width: isSelected ? 2 : 1,
+                    ),
+                    image: DecorationImage(
+                      image: ResizeImage(
+                        NetworkImage(url),
+                        width: 124,
+                        height: 194,
+                      ),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (isSelected)
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: Colors.black.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      if (isSelected)
+                        Center(
+                          child: Icon(
+                            Icons.check_circle_outline,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 28,
+                          ),
+                        )
+                      else
+                        Positioned(
+                          left: 4,
+                          right: 4,
+                          bottom: 4,
+                          child: Center(
+                            child: Text(
+                              labels[index],
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                shadows: const [
+                                  Shadow(color: Colors.black54, blurRadius: 2),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickBackgroundImage(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+  ) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
+    if (picked == null || !mounted) return;
+
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: picked.path,
+      aspectRatio: const CropAspectRatio(
+        ratioX: kBusinessCardAspectWidth,
+        ratioY: kBusinessCardAspectHeight,
+      ),
+      uiSettings: [
+        IOSUiSettings(
+          title: '',
+          doneButtonTitle: '저장',
+          cancelButtonTitle: '취소',
+          aspectRatioPresets: const [CropAspectRatioPreset.original],
+          aspectRatioLockEnabled: true,
+          resetAspectRatioEnabled: false,
+          rotateButtonsHidden: false,
+          hidesNavigationBar: false,
+        ),
+        AndroidUiSettings(
+          toolbarTitle: '',
+          toolbarColor: const Color(0xFF1A1C2E),
+          toolbarWidgetColor: Colors.white,
+          activeControlsWidgetColor: AppTheme.primary,
+          initAspectRatio: CropAspectRatioPreset.original,
+          lockAspectRatio: true,
+          aspectRatioPresets: const [CropAspectRatioPreset.original],
+        ),
+      ],
+    );
+
+    if (cropped == null || !mounted) return;
+
+    final docsDir = await getApplicationDocumentsDirectory();
+    final bgDir = Directory('${docsDir.path}/bg_images');
+    if (!await bgDir.exists()) await bgDir.create(recursive: true);
+    final fileName = 'bg_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final destFile = File('${bgDir.path}/$fileName');
+    await File(cropped.path).copy(destFile.path);
+    if (!mounted) return;
+    provider.updateCardData(data.copyWith(theme: destFile.path));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('배경이 현재 편집 중인 명함에 적용됐어요. 저장 버튼을 눌러야 영구 저장됩니다.'),
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<void> _onAiBackgroundTap(
+    BuildContext context,
+    AppProvider provider,
+    CardData data,
+  ) async {
+    setState(() {
+      _aiBackgroundLoading = true;
+      _aiRecommendedImages = [];
+    });
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      final pool = AppConstants.backgroundRecommendPool;
+      final rand = Random();
+      final results = <String>[
+        pool['general']![rand.nextInt(pool['general']!.length)],
+        pool['business']![rand.nextInt(pool['business']!.length)],
+        pool['pattern']![rand.nextInt(pool['pattern']!.length)],
+      ];
+      if (mounted) {
+        setState(() => _aiRecommendedImages = results);
+      }
+    } finally {
+      if (mounted) setState(() => _aiBackgroundLoading = false);
+    }
   }
 
   static const Color _profileActionRed = Color(0xFFE57373);
@@ -1604,11 +1974,12 @@ class _EditorScreenState extends State<EditorScreen>
         color: isHex ? _parseThemeColor(theme) : const Color(0xFF1a1c1e),
         image: !isHex && theme.isNotEmpty
             ? DecorationImage(
-                image: ResizeImage(
-                  NetworkImage(theme),
-                  width: 104,
-                  height: 104,
-                ),
+                image: theme.startsWith('http')
+                    ? ResizeImage(NetworkImage(theme), width: 104, height: 104)
+                    : (File(theme).existsSync()
+                        ? FileImage(File(theme))
+                        : NetworkImage(AppConstants.initialCardData.theme))
+                        as ImageProvider,
                 fit: BoxFit.cover,
                 onError: (_, _) {},
               )

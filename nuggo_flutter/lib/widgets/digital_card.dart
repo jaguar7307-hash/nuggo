@@ -1,9 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/card_data.dart';
+import '../providers/app_provider.dart';
+import '../widgets/login_bottom_sheet.dart';
 import 'business_card.dart';
 
 String _normalizePhone(String raw) {
@@ -33,16 +36,40 @@ class DigitalCard extends StatelessWidget {
     if (value.isEmpty && type != 'share') return;
 
     if (type == 'share') {
+      final app = context.read<AppProvider>();
+      final prereq = app.validateGuestSharePrerequisites(data);
+      if (prereq != null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(prereq),
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: app.settings.language == 'en' ? 'Edit' : '작성하기',
+                onPressed: () => app.setActiveView(ViewType.editor),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+      if (!app.canAttemptGuestShare()) {
+        if (context.mounted) await LoginBottomSheet.show(context);
+        return;
+      }
       String shareUrl =
           data.shareLink.trim().isEmpty ? 'https://nuggo.me' : data.shareLink;
       if (!shareUrl.startsWith('http')) shareUrl = 'https://$shareUrl';
-      await SharePlus.instance.share(
+      final result = await SharePlus.instance.share(
         ShareParams(
           text: shareUrl,
           subject:
               '명함: ${data.fullName.isNotEmpty ? data.fullName : "NUGGO"}',
         ),
       );
+      if (app.isGuest && (result.status.name == 'success')) {
+        await app.markGuestShareTrialUsed();
+      }
       return;
     }
 

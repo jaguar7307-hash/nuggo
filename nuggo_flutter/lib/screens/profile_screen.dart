@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import '../constants/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -16,6 +19,8 @@ import '../widgets/digital_card.dart';
 import '../widgets/business_card.dart' show kBusinessCardAspectRatio;
 import '../widgets/card_display.dart';
 import '../widgets/send_card_sheet.dart';
+import '../widgets/login_bottom_sheet.dart';
+import '../services/card_capture_service.dart';
 
 /// ?? ?? ?? (CRM?)
 class _RecentSendItem {
@@ -1016,12 +1021,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showSendSheet(
+  Future<void> _showSendSheet(
     BuildContext context,
     AppProvider provider,
     Profile selected,
     String language,
-  ) {
+  ) async {
+    final prereq = provider.validateGuestSharePrerequisites(selected.data);
+    if (prereq != null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(prereq),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: _tr(language, '작성하기', 'Edit'),
+            onPressed: () => provider.setActiveView(ViewType.editor),
+          ),
+        ),
+      );
+      return;
+    }
+    if (!provider.canAttemptGuestShare()) {
+      if (context.mounted) await LoginBottomSheet.show(context);
+      return;
+    }
     String url = selected.data.shareLink.trim();
     if (url.isEmpty) url = 'https://nuggo.me';
     if (!url.startsWith('http')) url = 'https://$url';
@@ -1052,15 +1076,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
       url: url,
       name: name,
       language: language,
+      cardData: selected.data,
       onRecordSend: recordSend,
     );
   }
 
-  void _shareCard(
+  Future<void> _shareCard(
     BuildContext context,
     AppProvider provider,
     Profile selected,
-  ) {
+  ) async {
+    final prereq = provider.validateGuestSharePrerequisites(selected.data);
+    if (prereq != null) {
+      if (!context.mounted) return;
+      final lang = provider.settings.language;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(prereq),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: _tr(lang, '작성하기', 'Edit'),
+            onPressed: () => provider.setActiveView(ViewType.editor),
+          ),
+        ),
+      );
+      return;
+    }
+    if (!provider.canAttemptGuestShare()) {
+      if (context.mounted) await LoginBottomSheet.show(context);
+      return;
+    }
     setState(() {
       _recentSends.insert(
         0,
@@ -1075,15 +1120,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     });
-    String url = selected.data.shareLink.trim();
-    if (url.isEmpty) url = 'https://nuggo.me';
-    if (!url.startsWith('http')) url = 'https://$url';
-    final name = selected.data.fullName.isEmpty
+    final displayName = selected.data.fullName.isEmpty
         ? selected.name
         : selected.data.fullName;
     final language = provider.settings.language;
-    final subject = _tr(language, '명함: $name', 'Card: $name');
-    SharePlus.instance.share(ShareParams(text: url, subject: subject));
+    final subject = _tr(language, '$displayName 명함', '$displayName\'s Card');
+
+    // 명함 이미지 캡처 → OS 공유시트
+    XFile? imageFile;
+    if (context.mounted) {
+      imageFile = await CardCaptureService.captureCard(context, selected.data);
+    }
+    if (!context.mounted) return;
+
+    final ShareResult result;
+    if (imageFile != null) {
+      result = await SharePlus.instance.share(
+        ShareParams(files: [imageFile], subject: subject),
+      );
+    } else {
+      // 이미지 캡처 실패 시 텍스트 폴백
+      result = await SharePlus.instance.share(
+        ShareParams(text: displayName, subject: subject),
+      );
+    }
+    if (provider.isGuest && result.status == ShareResultStatus.success) {
+      await provider.markGuestShareTrialUsed();
+    }
   }
 
   Profile _resolveSelectedProfile(List<Profile> profiles) {
@@ -1395,11 +1458,12 @@ class _MiniCardPreview extends StatelessWidget {
         color: isHex ? _parseThemeColor(theme) : null,
         image: !isHex && theme.isNotEmpty
             ? DecorationImage(
-                image: ResizeImage(
-                  NetworkImage(theme),
-                  width: 128,
-                  height: 192,
-                ),
+                image: theme.startsWith('http')
+                    ? ResizeImage(NetworkImage(theme), width: 128, height: 192)
+                    : (File(theme).existsSync()
+                        ? FileImage(File(theme))
+                        : NetworkImage(AppConstants.initialCardData.theme))
+                        as ImageProvider,
                 fit: BoxFit.cover,
               )
             : null,

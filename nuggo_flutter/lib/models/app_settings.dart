@@ -15,6 +15,7 @@ class AppSettings {
   bool privateMode;
   ProfilePrivacy profilePrivacy;
   String language; // 'ko' or 'en'
+  bool guestShareTrialUsed; // 게스트 공유/보내기 1회 체험 사용 여부
 
   AppSettings({
     this.darkMode = true,
@@ -27,6 +28,7 @@ class AppSettings {
     this.privateMode = false,
     this.profilePrivacy = ProfilePrivacy.public,
     this.language = 'ko',
+    this.guestShareTrialUsed = false,
   });
 
   AppSettings copyWith({
@@ -40,6 +42,7 @@ class AppSettings {
     bool? privateMode,
     ProfilePrivacy? profilePrivacy,
     String? language,
+    bool? guestShareTrialUsed,
   }) {
     return AppSettings(
       darkMode: darkMode ?? this.darkMode,
@@ -52,6 +55,7 @@ class AppSettings {
       privateMode: privateMode ?? this.privateMode,
       profilePrivacy: profilePrivacy ?? this.profilePrivacy,
       language: language ?? this.language,
+      guestShareTrialUsed: guestShareTrialUsed ?? this.guestShareTrialUsed,
     );
   }
 
@@ -67,6 +71,7 @@ class AppSettings {
       'privateMode': privateMode,
       'profilePrivacy': profilePrivacy.index,
       'language': language,
+      'guestShareTrialUsed': guestShareTrialUsed,
     };
   }
 
@@ -82,6 +87,7 @@ class AppSettings {
       privateMode: json['privateMode'] ?? false,
       profilePrivacy: ProfilePrivacy.values[json['profilePrivacy'] ?? 0],
       language: json['language'] ?? 'ko',
+      guestShareTrialUsed: json['guestShareTrialUsed'] ?? false,
     );
   }
 }

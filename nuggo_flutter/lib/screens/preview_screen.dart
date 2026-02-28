@@ -1,15 +1,20 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../constants/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../constants/theme.dart';
 import '../providers/app_provider.dart';
 import '../models/card_data.dart';
 import '../widgets/nuggo_logo.dart';
 import '../widgets/send_card_sheet.dart';
+import '../widgets/login_bottom_sheet.dart';
+import '../services/card_capture_service.dart';
 
 /// 원본 React PreviewView와 동일: 풀스크린 명함 배경 + 로고/슬로건/이름/3x2 액션/주소/하단 CTA
 class PreviewScreen extends StatefulWidget {
@@ -262,14 +267,48 @@ class _PreviewScreenState extends State<PreviewScreen> {
   Future<void> _handleAction(String type, String value, CardData data) async {
     if (value.isEmpty && type != 'share' && type != 'portfolio') return;
     if (type == 'share') {
-      String url = data.shareLink.trim().isEmpty ? 'https://nuggo.me' : data.shareLink;
-      if (!url.startsWith('http')) url = 'https://$url';
-      await SharePlus.instance.share(
-        ShareParams(
-          text: url,
-          subject: '명함: ${data.fullName.isNotEmpty ? data.fullName : "NUGGO"}',
-        ),
-      );
+      final provider = context.read<AppProvider>();
+      final prereq = provider.validateGuestSharePrerequisites(data);
+      if (prereq != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(prereq),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: provider.settings.language == 'en' ? 'Edit' : '작성하기',
+              onPressed: () => provider.setActiveView(ViewType.editor),
+            ),
+          ),
+        );
+        return;
+      }
+      if (!provider.canAttemptGuestShare()) {
+        if (mounted) await LoginBottomSheet.show(context);
+        return;
+      }
+      // 명함 이미지 캡처 → OS 공유시트
+      final displayName =
+          data.fullName.isNotEmpty ? data.fullName : 'NUGGO';
+      final subject = '${provider.settings.language == 'en' ? '' : ''}$displayName${provider.settings.language == 'en' ? '\'s Card' : ' 명함'}';
+      XFile? imageFile;
+      if (mounted) {
+        imageFile = await CardCaptureService.captureCard(context, data);
+      }
+      if (!mounted) return;
+      final ShareResult result;
+      if (imageFile != null) {
+        result = await SharePlus.instance.share(
+          ShareParams(files: [imageFile], subject: subject),
+        );
+      } else {
+        result = await SharePlus.instance.share(
+          ShareParams(text: displayName, subject: subject),
+        );
+      }
+      if (provider.isGuest && result.status == ShareResultStatus.success) {
+        await provider.markGuestShareTrialUsed();
+      }
       return;
     }
     if (type == 'mail') {
@@ -350,7 +389,13 @@ class _PreviewScreenState extends State<PreviewScreen> {
                   color: isHex ? _parseHex(theme) : const Color(0xFF1a1c1e),
                   image: !isHex
                       ? DecorationImage(
-                          image: NetworkImage(theme),
+                          image: theme.startsWith('http')
+                              ? NetworkImage(theme)
+                              : (File(theme).existsSync()
+                                  ? FileImage(File(theme))
+                                  : NetworkImage(
+                                      AppConstants.initialCardData.theme))
+                                  as ImageProvider,
                           fit: BoxFit.cover,
                           alignment: Alignment.center,
                         )
@@ -380,22 +425,18 @@ class _PreviewScreenState extends State<PreviewScreen> {
                       child: Row(
                         children: [
                           Opacity(
-                            opacity: 0.8,
+                            opacity: 0.9,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 NuggoLogo(
                                   size: 18,
-                                  color: isLight
-                                      ? NuggoLogo.defaultColor
-                                      : Colors.white,
+                                  color: AppTheme.logoPrimary,
                                 ),
                                 const SizedBox(width: 5),
-                                NuggoTextLogo(
+                                const NuggoTextLogo(
                                   fontSize: 13,
-                                  variant: isLight
-                                      ? LogoVariant.brand
-                                      : LogoVariant.white,
+                                  variant: LogoVariant.brand,
                                 ),
                               ],
                             ),
@@ -404,7 +445,32 @@ class _PreviewScreenState extends State<PreviewScreen> {
                           _previewTopBtn(
                             icon: Icons.send,
                             isLight: isLight,
-                            onTap: () {
+                            onTap: () async {
+                              final prereq =
+                                  provider.validateGuestSharePrerequisites(data);
+                              if (prereq != null) {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(prereq),
+                                    behavior: SnackBarBehavior.floating,
+                                    action: SnackBarAction(
+                                      label: provider.settings.language == 'en'
+                                          ? 'Edit'
+                                          : '작성하기',
+                                      onPressed: () => provider
+                                          .setActiveView(ViewType.editor),
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+                              if (!provider.canAttemptGuestShare()) {
+                                if (context.mounted) {
+                                  await LoginBottomSheet.show(context);
+                                }
+                                return;
+                              }
                               String url = data.shareLink.trim().isEmpty
                                   ? 'https://nuggo.me'
                                   : data.shareLink;
@@ -419,6 +485,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 url: url,
                                 name: name,
                                 language: provider.settings.language,
+                                cardData: data,
                               );
                             },
                           ),
@@ -426,7 +493,31 @@ class _PreviewScreenState extends State<PreviewScreen> {
                           _previewTopBtn(
                             icon: Icons.qr_code_2,
                             isLight: isLight,
-                            onTap: () => _showQrDialog(context, data),
+                            onTap: () {
+                              final prereq =
+                                  provider.validateGuestSharePrerequisites(data);
+                              if (prereq != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(prereq),
+                                    behavior: SnackBarBehavior.floating,
+                                    action: SnackBarAction(
+                                      label: provider.settings.language == 'en'
+                                          ? 'Edit'
+                                          : '작성하기',
+                                      onPressed: () => provider
+                                          .setActiveView(ViewType.editor),
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+                              if (!provider.canAttemptGuestShare()) {
+                                LoginBottomSheet.show(context);
+                                return;
+                              }
+                              _showQrDialog(context, data);
+                            },
                           ),
                           const SizedBox(width: 4),
                           _previewTopBtn(

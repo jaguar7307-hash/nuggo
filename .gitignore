@@ -1,0 +1,22 @@
+# 보안 키 파일 (절대 커밋 금지)
+dart_defines.env
+secrets.env
+*.env
+
+# Flutter
+nuggo_flutter/.dart_tool/
+nuggo_flutter/build/
+nuggo_flutter/.flutter-plugins
+nuggo_flutter/.flutter-plugins-dependencies
+
+# Xcode
+nuggo_flutter/ios/Pods/
+nuggo_flutter/ios/.symlinks/
+nuggo_flutter/ios/Runner.xcworkspace/xcuserdata/
+nuggo_flutter/ios/Podfile.lock
+
+# macOS
+.DS_Store
+
+# Cursor
+.cursor/debug-*.log

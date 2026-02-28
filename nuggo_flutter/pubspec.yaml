@@ -59,11 +59,18 @@ dependencies:
   # Fonts
   google_fonts: ^8.0.2
   
+  # WebView (인터랙티브 명함 뷰)
+  webview_flutter: ^4.10.0
+
   # URL Launcher
   url_launcher: ^6.3.1
   
   # Sharing
   share_plus: ^12.0.1
+
+  # Kakao Talk Share (카드 + [확인하기] 버튼)
+  kakao_flutter_sdk_common: ^1.9.7
+  kakao_flutter_sdk_share: ^1.9.7
   
   # Biometric Auth
   local_auth: ^3.0.0

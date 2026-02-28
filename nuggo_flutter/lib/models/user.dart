@@ -4,6 +4,7 @@ enum AuthProvider {
   naver,
   google,
   guest,
+  apple,
 }
 
 enum MembershipTier {

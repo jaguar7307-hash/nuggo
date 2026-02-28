@@ -37,6 +37,51 @@ class AppConstants {
     font: FontType.serifElegant,
   );
 
+  /// AI 배경 추천용 큐레이션 이미지 풀 (Unsplash)
+  /// 3카테고리: 일반(미니멀/그라데이션) / 비즈니스·기하학 건물 내부 / 패턴·텍스처
+  /// ※ themeTemplates와 중복 제거, 선호도 학습 시 가중치 확장 가능
+  static const Map<String, List<String>> backgroundRecommendPool = {
+    // 일반: 그라데이션·미니멀·색감 배경 (themeTemplates와 겹치지 않는 것)
+    'general': [
+      'https://images.unsplash.com/photo-1579546929518-9e396b3cc25e?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1557682250-702bd91c8dcf?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1557682224-5b8590e9b412?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1557682260-96773eb01377?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1557683311-eac922347aa1?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1462275646964-a0e3386b89fa?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1614850715649-1d0106293bd1?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?auto=format&fit=crop&q=80&w=400',
+    ],
+    // 비즈니스: 기하학적 건물 내부·복도·건축 라인·세련된 인테리어
+    'business': [
+      'https://images.unsplash.com/photo-1486325212027-8081e485255e?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1445991842772-097fea258e7b?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1497366412874-3415097a27e7?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1481277542470-605612bd2d61?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&q=80&w=400',
+    ],
+    // 패턴·텍스처: 기하학 패턴·추상 아트·고급 텍스처 (themeTemplates creative와 중복 제거)
+    'pattern': [
+      'https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1518998053901-5348d4b4b32e?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1507908708918-778587c9e563?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1520045892732-304bc3ac5d8e?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1550684376-efcbd6e3f031?auto=format&fit=crop&q=80&w=400',
+    ],
+  };
+
   // Theme Templates (via.placeholder.com 제외 - CORS 문제로 Unsplash만 사용)
   static const Map<ThemeType, List<String>> themeTemplates = {
     ThemeType.professional: [
