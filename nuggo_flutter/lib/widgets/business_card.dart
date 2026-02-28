@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../constants/constants.dart';
 import '../models/card_data.dart';
 import '../constants/theme.dart';
 
@@ -74,7 +75,10 @@ class BusinessCard extends StatelessWidget {
               ? DecorationImage(
                   image: data.theme.startsWith('http')
                       ? NetworkImage(data.theme)
-                      : FileImage(File(data.theme)) as ImageProvider,
+                      : (File(data.theme).existsSync()
+                          ? FileImage(File(data.theme))
+                          : NetworkImage(AppConstants.initialCardData.theme))
+                          as ImageProvider,
                   fit: BoxFit.cover,
                 )
               : null,
