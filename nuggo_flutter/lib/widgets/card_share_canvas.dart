@@ -9,10 +9,11 @@ import 'business_card.dart';
 class CardShareCanvas extends StatelessWidget {
   final CardData data;
 
-  // 카드 비율: 앱 미리보기와 동일 (85.6mm × 54mm = 1.585:1)
+  // 카드 비율: kBusinessCardAspectRatio = 242.55/388.08 ≈ 0.625 (세로형)
   static const double canvasWidth = 400.0;
   static const double cardWidth = 340.0;
-  static const double cardHeight = cardWidth / 1.585; // ≈ 214.5
+  // 세로형: height = width / (width/height 비율) = width * 1.6
+  static const double cardHeight = cardWidth / kBusinessCardAspectRatio; // ≈ 544
   static const double footerHeight = 76.0;
   static const double canvasHeight = 28 + cardHeight + 14 + footerHeight + 20;
 
@@ -49,7 +50,10 @@ class CardShareCanvas extends StatelessWidget {
                   child: SizedBox(
                     width: cardWidth,
                     height: cardHeight,
-                    child: BusinessCard(data: data),
+                    child: BusinessCard(
+                      data: data,
+                      forceActionIconsEnabled: true,
+                    ),
                   ),
                 ),
               ),

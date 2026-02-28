@@ -28,18 +28,24 @@ class CardCaptureService {
     late OverlayEntry entry;
 
     entry = OverlayEntry(
-      builder: (_) => Positioned(
+      builder: (ctx) => Positioned(
         left: -(CardShareCanvas.canvasWidth * _pixelRatio * 2),
         top: 0,
         width: CardShareCanvas.canvasWidth,
         height: CardShareCanvas.canvasHeight,
         child: MediaQuery(
           data: const MediaQueryData(devicePixelRatio: 1.0),
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: RepaintBoundary(
-              key: repaintKey,
-              child: CardShareCanvas(data: data),
+          child: Theme(
+            data: Theme.of(context),
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Material(
+                color: Colors.transparent,
+                child: RepaintBoundary(
+                  key: repaintKey,
+                  child: CardShareCanvas(data: data),
+                ),
+              ),
             ),
           ),
         ),
@@ -50,8 +56,8 @@ class CardCaptureService {
     overlay.insert(entry);
 
     try {
-      // 프레임 2회 대기 (레이아웃 + 페인트 완료)
-      await Future.delayed(const Duration(milliseconds: 300));
+      // 레이아웃 + 페인트 + 배경 이미지 로드 대기
+      await Future.delayed(const Duration(milliseconds: 600));
 
       final renderObj = repaintKey.currentContext?.findRenderObject();
       if (renderObj == null || renderObj is! RenderRepaintBoundary) {
