@@ -212,7 +212,7 @@
 
   <div class="btn-group" id="btn-group" style="display:none">
     <!-- 나도 명함 만들기 — 주황 그라디언트, 전폭 -->
-    <a class="btn-make" id="btn-make" href="https://github.com/jaguar7307-hash/nuggo" target="_blank" rel="noopener">
+    <a class="btn-make" id="btn-make" href="#" rel="noopener">
       <span class="material-icons-round" style="font-size:20px">auto_awesome</span>
       나도 명함 만들기
     </a>
@@ -550,12 +550,18 @@
     document.getElementById('btn-group').style.display = 'flex';
     document.getElementById('btn-contact').addEventListener('click', downloadVCard);
 
-    // 나도 명함 만들기: 플랫폼별 링크 (앱 출시 전 임시)
+    // 나도 명함 만들기: 플랫폼 감지 → iOS App Store / Android Play Store
     document.getElementById('btn-make').addEventListener('click', function(e) {
       e.preventDefault();
       var ua = navigator.userAgent || '';
-      // TODO: 앱 출시 후 실제 스토어 링크로 교체
-      location.href = 'https://github.com/jaguar7307-hash/nuggo';
+      var isIOS     = /iPhone|iPad|iPod/i.test(ua);
+      var isAndroid = /Android/i.test(ua);
+      // TODO: 앱 출시 후 실제 스토어 URL로 교체
+      var IOS_STORE     = 'https://apps.apple.com/app/nuggo/id[APP_ID]';
+      var ANDROID_STORE = 'https://play.google.com/store/apps/details?id=com.yongsangjo.nuggo';
+      if (isIOS)          { location.href = IOS_STORE; }
+      else if (isAndroid) { location.href = ANDROID_STORE; }
+      else                { location.href = IOS_STORE; }
     });
 
   } else {

@@ -314,16 +314,11 @@ class _PreviewScreenState extends State<PreviewScreen> {
         return;
       }
       if (!mounted) return;
-      setState(() => _isCapturing = true);
-      final imageFile = await _capturePreview(data);
-      if (!mounted) return;
-      setState(() => _isCapturing = false);
-      if (imageFile != null) {
-        await SharePlus.instance.share(ShareParams(files: [imageFile]));
-      } else {
-        final name = data.fullName.isNotEmpty ? data.fullName : 'NUGGO';
-        await SharePlus.instance.share(ShareParams(text: name));
-      }
+      final webUrl = CardUrlGenerator.generate(data);
+      final name = data.fullName.isNotEmpty ? data.fullName : 'NUGGO';
+      await SharePlus.instance.share(
+        ShareParams(text: '$name 님의 디지털 명함\n$webUrl'),
+      );
       return;
     }
     if (type == 'mail') {
@@ -489,22 +484,11 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 }
                                 return;
                               }
-                              // 미리보기 화면 전체를 이미지로 캡처 후 공유
-                              setState(() => _isCapturing = true);
-                              final imageFile = await _capturePreview(data);
-                              if (!mounted) return;
-                              setState(() => _isCapturing = false);
-
-                              if (imageFile != null) {
-                                await SharePlus.instance.share(
-                                  ShareParams(files: [imageFile]),
-                                );
-                              } else {
-                                final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
-                                await SharePlus.instance.share(
-                                  ShareParams(text: name),
-                                );
-                              }
+                              final webUrl = CardUrlGenerator.generate(data);
+                              final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
+                              await SharePlus.instance.share(
+                                ShareParams(text: '$name 님의 디지털 명함\n$webUrl'),
+                              );
                             },
                           ),
                           const SizedBox(width: 4),

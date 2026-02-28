@@ -1084,22 +1084,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final webUrl = CardUrlGenerator.generate(selected.data);
 
-    if (imageFile != null) {
-      await SharePlus.instance.share(ShareParams(
-        files: [imageFile],
+    await SharePlus.instance.share(ShareParams(
+      text: '$name 님의 디지털 명함\n$webUrl',
+    ));
+    setState(() {
+      _recentSends.insert(0, _RecentSendItem(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: name, method: '링크 공유', time: '방금 전',
+        revisitCount: 0, viewCount: 0, phone: selected.data.phone,
       ));
-      setState(() {
-        _recentSends.insert(0, _RecentSendItem(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          name: name, method: '이미지 공유', time: '방금 전',
-          revisitCount: 0, viewCount: 0, phone: selected.data.phone,
-        ));
-      });
-    } else {
-      await SharePlus.instance.share(ShareParams(
-        text: '$name 님의 디지털 명함\n$webUrl',
-      ));
-    }
+    });
   }
 
   Future<void> _shareCard(
