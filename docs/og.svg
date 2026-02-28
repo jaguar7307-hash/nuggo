@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0B0B1A"/>
+      <stop offset="100%" style="stop-color:#111827"/>
+    </linearGradient>
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E2030"/>
+      <stop offset="100%" style="stop-color:#252840"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="20" stdDeviation="30" flood-color="rgba(0,0,0,0.6)"/>
+    </filter>
+  </defs>
+
+  <!-- 0½ -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- ¥Ý Ð -->
+  <circle cx="950" cy="100" r="200" fill="rgba(99,102,241,0.08)"/>
+  <circle cx="200" cy="500" r="150" fill="rgba(99,102,241,0.05)"/>
+
+  <!-- …h tÜ -->
+  <rect x="560" y="80" width="580" height="470" rx="32" fill="url(#cardBg)" filter="url(#shadow)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+
+  <!-- tÜ ´€ ¬\t -->
+  <text x="850" y="155" text-anchor="middle" font-family="Manrope, sans-serif" font-size="11" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.4)">DIGITAL BUSINESS CARD</text>
+
+  <!-- l„  -->
+  <line x1="780" y1="170" x2="920" y2="170" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+
+  <!-- t„ t¤@T -->
+  <text x="850" y="225" text-anchor="middle" font-family="Manrope, sans-serif" font-size="28" font-weight="800" fill="white">M8Ù</text>
+  <text x="850" y="252" text-anchor="middle" font-family="Manrope, sans-serif" font-size="11" font-weight="700" letter-spacing="3" fill="#A5B4FC">PRODUCT MANAGER</text>
+  <text x="850" y="272" text-anchor="middle" font-family="Manrope, sans-serif" font-size="9" letter-spacing="2" fill="rgba(255,255,255,0.4)">NUGGO INC.</text>
+
+  <!-- l„  -->
+  <line x1="600" y1="292" x2="1100" y2="292" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+
+  <!-- aX DtX ‰ 1 -->
+  <g>
+    <!-- T -->
+    <rect x="650" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
+    <text x="679" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">call</text>
+    <text x="679" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">PHONE</text>
+
+    <!-- SMS -->
+    <rect x="726" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
+    <text x="755" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">sms</text>
+    <text x="755" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">SMS</text>
+
+    <!-- tT| -->
+    <rect x="802" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
+    <text x="831" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">mail</text>
+    <text x="831" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">EMAIL</text>
+  </g>
+
+  <!-- aX DtX ‰ 2 -->
+  <g>
+    <rect x="878" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
+    <text x="907" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">language</text>
+    <text x="907" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">WEB</text>
+
+    <rect x="954" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
+    <text x="983" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">chat</text>
+    <text x="983" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">KAKAO</text>
+
+    <rect x="1030" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
+    <text x="1059" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">share</text>
+    <text x="1059" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">SNS</text>
+  </g>
+
+  <!-- üŒ  -->
+  <rect x="620" y="388" width="460" height="32" rx="10" fill="rgba(255,255,255,0.06)"/>
+  <text x="850" y="409" text-anchor="middle" font-family="Manrope, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="rgba(255,255,255,0.4)">SEOUL, KOREA</text>
+
+  <!-- Xè 0X Œ¸ -->
+  <text x="850" y="460" text-anchor="middle" font-family="Manrope, sans-serif" font-size="11" font-weight="600" fill="rgba(255,255,255,0.3)">íXt \ ð°</text>
+  <text x="850" y="480" text-anchor="middle" font-family="Manrope, sans-serif" font-size="9" fill="rgba(255,255,255,0.2)">Touch to interact</text>
+
+  <!-- |½ M¤¸ í -->
+  <text x="80" y="200" font-family="Manrope, sans-serif" font-size="52" font-weight="800" fill="white" letter-spacing="-2">
+    <tspan fill="#0055FF">NUG</tspan><tspan fill="#FF4F00">GO</tspan>
+  </text>
+
+  <text x="82" y="240" font-family="Manrope, sans-serif" font-size="14" font-weight="700" letter-spacing="1" fill="rgba(255,255,255,0.5)">DIGITAL BUSINESS CARD</text>
+
+  <!-- $… M¤¸ -->
+  <text x="82" y="310" font-family="Manrope, sans-serif" font-size="22" font-weight="700" fill="white">tøÀ˜ü ôt”</text>
+  <text x="82" y="345" font-family="Manrope, sans-serif" font-size="22" font-weight="700" fill="white">x0™ð …h</text>
+
+  <text x="82" y="395" font-family="Manrope, sans-serif" font-size="14" fill="rgba(255,255,255,0.5)">íXt T·tT|·tt$</text>
+  <text x="82" y="420" font-family="Manrope, sans-serif" font-size="14" fill="rgba(255,255,255,0.5)">\ ð°” ¤È¸ …h</text>
+
+  <!-- CTA „¼ -->
+  <rect x="82" y="460" width="180" height="44" rx="12" fill="#6366F1"/>
+  <text x="172" y="488" text-anchor="middle" font-family="Manrope, sans-serif" font-size="13" font-weight="700" fill="white">…h ô0 ’</text>
+</svg>
