@@ -586,9 +586,10 @@ class _EditorScreenState extends State<EditorScreen>
               : data.fullName.trim().replaceAll(RegExp(r'[^\w가-힣]'), '_');
           final file = File('${dir.path}/${safeName}_nuggo.png');
           await file.writeAsBytes(bytes);
+          final cardName = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
           final webUrl = CardUrlGenerator.generate(data);
           await SharePlus.instance.share(
-            ShareParams(text: '$name 님의 디지털 명함\n$webUrl'),
+            ShareParams(text: '$cardName 님의 디지털 명함\n$webUrl'),
           );
           return;
         }
