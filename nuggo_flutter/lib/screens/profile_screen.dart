@@ -20,7 +20,7 @@ import '../widgets/business_card.dart' show kBusinessCardAspectRatio;
 import '../widgets/card_display.dart';
 import '../widgets/send_card_sheet.dart';
 import '../widgets/login_bottom_sheet.dart';
-import '../services/card_capture_service.dart';
+import '../services/card_url_generator.dart';
 
 /// ?? ?? ?? (CRM?)
 class _RecentSendItem {
@@ -1126,27 +1126,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final language = provider.settings.language;
     final subject = _tr(language, '$displayName 명함', '$displayName\'s Card');
 
-    // 명함 이미지 캡처 → OS 공유시트
-    XFile? imageFile;
-    if (context.mounted) {
-      imageFile = await CardCaptureService.captureCard(context, selected.data);
-    }
     if (!context.mounted) return;
-
-    final ShareResult result;
-    if (imageFile != null) {
-      result = await SharePlus.instance.share(
-        ShareParams(files: [imageFile], subject: subject),
-      );
-    } else {
-      // 이미지 캡처 실패 시 텍스트 폴백
-      result = await SharePlus.instance.share(
-        ShareParams(text: displayName, subject: subject),
-      );
-    }
-    if (provider.isGuest && result.status == ShareResultStatus.success) {
-      await provider.markGuestShareTrialUsed();
-    }
+    SendCardSheet.show(
+      context,
+      url: CardUrlGenerator.generate(selected.data),
+      name: displayName,
+      language: language,
+      cardData: selected.data,
+    );
   }
 
   Profile _resolveSelectedProfile(List<Profile> profiles) {
