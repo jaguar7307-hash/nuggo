@@ -16,6 +16,7 @@ import '../providers/app_provider.dart';
 import '../models/card_data.dart';
 import '../widgets/nuggo_logo.dart';
 import '../widgets/login_bottom_sheet.dart';
+import '../services/card_url_generator.dart';
 
 /// 원본 React PreviewView와 동일: 풀스크린 명함 배경 + 로고/슬로건/이름/3x2 액션/주소/하단 CTA
 class PreviewScreen extends StatefulWidget {
@@ -313,16 +314,16 @@ class _PreviewScreenState extends State<PreviewScreen> {
         return;
       }
       if (!mounted) return;
-      // 카드 이미지 캡처 후 OS 공유
       setState(() => _isCapturing = true);
       final imageFile = await _capturePreview(data);
       if (!mounted) return;
       setState(() => _isCapturing = false);
+      final webUrl = CardUrlGenerator.generate(data);
       if (imageFile != null) {
-        await SharePlus.instance.share(ShareParams(files: [imageFile]));
+        await SharePlus.instance.share(ShareParams(files: [imageFile], text: '🔗 $webUrl'));
       } else {
         final name = data.fullName.isNotEmpty ? data.fullName : 'NUGGO';
-        await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함'));
+        await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함\n$webUrl'));
       }
       return;
     }
@@ -495,17 +496,15 @@ class _PreviewScreenState extends State<PreviewScreen> {
                               if (!mounted) return;
                               setState(() => _isCapturing = false);
 
+                              final webUrl = CardUrlGenerator.generate(data);
                               if (imageFile != null) {
                                 await SharePlus.instance.share(
-                                  ShareParams(files: [imageFile]),
+                                  ShareParams(files: [imageFile], text: '🔗 $webUrl'),
                                 );
                               } else {
-                                // 캡처 실패 시 URL 폴백
                                 final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
-                                final url = data.shareLink.trim().isEmpty
-                                    ? 'https://nuggo.me' : data.shareLink;
                                 await SharePlus.instance.share(
-                                  ShareParams(text: '$name 님의 디지털 명함\n$url'),
+                                  ShareParams(text: '$name 님의 디지털 명함\n$webUrl'),
                                 );
                               }
                             },

@@ -1082,9 +1082,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? selected.name
         : selected.data.fullName;
 
+    // 인터랙티브 웹 카드 URL (이미지와 함께 전송해 상대방이 탭으로 연결 가능)
+    final webUrl = CardUrlGenerator.generate(selected.data);
+
     if (imageFile != null) {
-      // 카드 이미지를 OS 공유시트로 직접 전송
-      await SharePlus.instance.share(ShareParams(files: [imageFile]));
+      // 이미지 + 웹 URL 텍스트 함께 공유 → 상대방이 이미지 보고 링크로 인터랙티브 카드 열기
+      await SharePlus.instance.share(ShareParams(
+        files: [imageFile],
+        text: '🔗 $webUrl',
+      ));
       setState(() {
         _recentSends.insert(0, _RecentSendItem(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -1093,12 +1099,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ));
       });
     } else {
-      // 캡처 실패 시 URL 공유 폴백
-      String url = selected.data.shareLink.trim();
-      if (url.isEmpty) url = CardUrlGenerator.generate(selected.data);
-      if (!url.startsWith('http')) url = 'https://$url';
       await SharePlus.instance.share(ShareParams(
-        text: '$name 님의 디지털 명함\n$url',
+        text: '$name 님의 디지털 명함\n$webUrl',
       ));
     }
   }

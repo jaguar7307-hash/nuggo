@@ -24,6 +24,7 @@ import '../widgets/business_card.dart';
 import '../widgets/card_display.dart';
 import 'package:share_plus/share_plus.dart';
 import '../widgets/login_bottom_sheet.dart';
+import '../services/card_url_generator.dart';
 
 class EditorScreen extends StatefulWidget {
   const EditorScreen({super.key});
@@ -585,8 +586,12 @@ class _EditorScreenState extends State<EditorScreen>
               : data.fullName.trim().replaceAll(RegExp(r'[^\w가-힣]'), '_');
           final file = File('${dir.path}/${safeName}_nuggo.png');
           await file.writeAsBytes(bytes);
+          final webUrl = CardUrlGenerator.generate(data);
           await SharePlus.instance.share(
-            ShareParams(files: [XFile(file.path, mimeType: 'image/png')]),
+            ShareParams(
+              files: [XFile(file.path, mimeType: 'image/png')],
+              text: '🔗 $webUrl',
+            ),
           );
           return;
         }
@@ -595,7 +600,8 @@ class _EditorScreenState extends State<EditorScreen>
     // 캡처 실패 시 URL 폴백
     if (!context.mounted) return;
     final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
-    await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함'));
+    final webUrl = CardUrlGenerator.generate(data);
+    await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함\n$webUrl'));
   }
 
   void _showQrDialogFromEditor(BuildContext context, AppProvider provider) {
