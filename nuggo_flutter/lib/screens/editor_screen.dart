@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:image_cropper/image_cropper.dart';
 
@@ -21,7 +22,7 @@ import '../constants/constants.dart';
 import '../constants/theme.dart';
 import '../widgets/business_card.dart';
 import '../widgets/card_display.dart';
-import '../widgets/send_card_sheet.dart';
+import 'package:share_plus/share_plus.dart';
 import '../widgets/login_bottom_sheet.dart';
 
 class EditorScreen extends StatefulWidget {
@@ -40,6 +41,7 @@ class _EditorScreenState extends State<EditorScreen>
   double _prevKeyboardH = 0.0;
   final GlobalKey _backgroundSectionKey = GlobalKey();
   final GlobalKey _languageModeToggleKey = GlobalKey();
+  final GlobalKey _cardRepaintKey = GlobalKey();
   OverlayEntry? _languageModeOverlay;
 
   // 플로팅 저장 버튼을 카드 우측 상단(추가 버튼 위)에 고정 배치하기 위한 계산 상수
@@ -411,16 +413,19 @@ class _EditorScreenState extends State<EditorScreen>
                       Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          SizedBox(
-                            width: cardW,
-                            height: kBusinessCardAspectHeight,
-                            child: CardDisplay(
+                          RepaintBoundary(
+                            key: _cardRepaintKey,
+                            child: SizedBox(
                               width: cardW,
                               height: kBusinessCardAspectHeight,
-                              data: data,
-                              interactive: false,
-                              forceActionIconsEnabled: true,
-                              showShadow: false,
+                              child: CardDisplay(
+                                width: cardW,
+                                height: kBusinessCardAspectHeight,
+                                data: data,
+                                interactive: false,
+                                forceActionIconsEnabled: true,
+                                showShadow: false,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -557,10 +562,7 @@ class _EditorScreenState extends State<EditorScreen>
     if (prereq != null) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(prereq),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(prereq), behavior: SnackBarBehavior.floating),
       );
       return;
     }
@@ -568,18 +570,32 @@ class _EditorScreenState extends State<EditorScreen>
       if (context.mounted) await LoginBottomSheet.show(context);
       return;
     }
-    String url = data.shareLink.trim();
-    if (url.isEmpty) url = 'https://nuggo.me';
-    if (!url.startsWith('http')) url = 'https://$url';
+    // 에디터에 렌더링된 카드 이미지로 캡처 후 OS 공유
+    try {
+      final boundary = _cardRepaintKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary != null) {
+        final img = await boundary.toImage(pixelRatio: 3.0);
+        final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData != null && context.mounted) {
+          final bytes = byteData.buffer.asUint8List();
+          final dir = await getTemporaryDirectory();
+          final safeName = data.fullName.trim().isEmpty
+              ? 'card'
+              : data.fullName.trim().replaceAll(RegExp(r'[^\w가-힣]'), '_');
+          final file = File('${dir.path}/${safeName}_nuggo.png');
+          await file.writeAsBytes(bytes);
+          await SharePlus.instance.share(
+            ShareParams(files: [XFile(file.path, mimeType: 'image/png')]),
+          );
+          return;
+        }
+      }
+    } catch (_) {}
+    // 캡처 실패 시 URL 폴백
+    if (!context.mounted) return;
     final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
-    final language = provider.settings.language;
-    SendCardSheet.show(
-      context,
-      url: url,
-      name: name,
-      language: language,
-      cardData: data,
-    );
+    await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함'));
   }
 
   void _showQrDialogFromEditor(BuildContext context, AppProvider provider) {
