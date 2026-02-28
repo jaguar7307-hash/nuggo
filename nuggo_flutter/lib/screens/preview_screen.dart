@@ -318,12 +318,11 @@ class _PreviewScreenState extends State<PreviewScreen> {
       final imageFile = await _capturePreview(data);
       if (!mounted) return;
       setState(() => _isCapturing = false);
-      final webUrl = CardUrlGenerator.generate(data);
       if (imageFile != null) {
-        await SharePlus.instance.share(ShareParams(files: [imageFile], text: '🔗 $webUrl'));
+        await SharePlus.instance.share(ShareParams(files: [imageFile]));
       } else {
         final name = data.fullName.isNotEmpty ? data.fullName : 'NUGGO';
-        await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함\n$webUrl'));
+        await SharePlus.instance.share(ShareParams(text: name));
       }
       return;
     }
@@ -496,15 +495,14 @@ class _PreviewScreenState extends State<PreviewScreen> {
                               if (!mounted) return;
                               setState(() => _isCapturing = false);
 
-                              final webUrl = CardUrlGenerator.generate(data);
                               if (imageFile != null) {
                                 await SharePlus.instance.share(
-                                  ShareParams(files: [imageFile], text: '🔗 $webUrl'),
+                                  ShareParams(files: [imageFile]),
                                 );
                               } else {
                                 final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
                                 await SharePlus.instance.share(
-                                  ShareParams(text: '$name 님의 디지털 명함\n$webUrl'),
+                                  ShareParams(text: name),
                                 );
                               }
                             },

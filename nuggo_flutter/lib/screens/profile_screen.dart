@@ -1082,14 +1082,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? selected.name
         : selected.data.fullName;
 
-    // 인터랙티브 웹 카드 URL (이미지와 함께 전송해 상대방이 탭으로 연결 가능)
     final webUrl = CardUrlGenerator.generate(selected.data);
 
     if (imageFile != null) {
-      // 이미지 + 웹 URL 텍스트 함께 공유 → 상대방이 이미지 보고 링크로 인터랙티브 카드 열기
       await SharePlus.instance.share(ShareParams(
         files: [imageFile],
-        text: '🔗 $webUrl',
       ));
       setState(() {
         _recentSends.insert(0, _RecentSendItem(
