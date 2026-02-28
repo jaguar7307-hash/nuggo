@@ -116,7 +116,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
           title: '$name 님의 디지털 명함',
           description: desc.isNotEmpty ? desc : '탭하면 전화·이메일·카카오 바로 연결!',
           imageUrl: Uri.parse(
-            'https://jaguar7307-hash.github.io/nuggo-card/og.png',
+            'https://jaguar7307-hash.github.io/nuggo-card/og.svg',
           ),
           link: Link(
             webUrl: Uri.parse(url),
