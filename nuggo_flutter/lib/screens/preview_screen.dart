@@ -14,6 +14,7 @@ import '../models/card_data.dart';
 import '../widgets/nuggo_logo.dart';
 import '../widgets/send_card_sheet.dart';
 import '../widgets/login_bottom_sheet.dart';
+import '../services/card_capture_service.dart';
 
 /// 원본 React PreviewView와 동일: 풀스크린 명함 배경 + 로고/슬로건/이름/3x2 액션/주소/하단 CTA
 class PreviewScreen extends StatefulWidget {
@@ -286,15 +287,26 @@ class _PreviewScreenState extends State<PreviewScreen> {
         if (mounted) await LoginBottomSheet.show(context);
         return;
       }
-      String url = data.shareLink.trim().isEmpty ? 'https://nuggo.me' : data.shareLink;
-      if (!url.startsWith('http')) url = 'https://$url';
-      final result = await SharePlus.instance.share(
-        ShareParams(
-          text: url,
-          subject: '명함: ${data.fullName.isNotEmpty ? data.fullName : "NUGGO"}',
-        ),
-      );
-      if (provider.isGuest && (result.status.name == 'success')) {
+      // 명함 이미지 캡처 → OS 공유시트
+      final displayName =
+          data.fullName.isNotEmpty ? data.fullName : 'NUGGO';
+      final subject = '${provider.settings.language == 'en' ? '' : ''}$displayName${provider.settings.language == 'en' ? '\'s Card' : ' 명함'}';
+      XFile? imageFile;
+      if (mounted) {
+        imageFile = await CardCaptureService.captureCard(context, data);
+      }
+      if (!mounted) return;
+      final ShareResult result;
+      if (imageFile != null) {
+        result = await SharePlus.instance.share(
+          ShareParams(files: [imageFile], subject: subject),
+        );
+      } else {
+        result = await SharePlus.instance.share(
+          ShareParams(text: displayName, subject: subject),
+        );
+      }
+      if (provider.isGuest && result.status == ShareResultStatus.success) {
         await provider.markGuestShareTrialUsed();
       }
       return;
