@@ -586,20 +586,16 @@ class _EditorScreenState extends State<EditorScreen>
               : data.fullName.trim().replaceAll(RegExp(r'[^\w가-힣]'), '_');
           final file = File('${dir.path}/${safeName}_nuggo.png');
           await file.writeAsBytes(bytes);
-          final cardName = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
           final webUrl = CardUrlGenerator.generate(data);
-          await SharePlus.instance.share(
-            ShareParams(text: '$cardName 님의 디지털 명함\n$webUrl'),
-          );
+          await SharePlus.instance.share(ShareParams(text: webUrl));
           return;
         }
       }
     } catch (_) {}
     // 캡처 실패 시 URL 폴백
     if (!context.mounted) return;
-    final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
     final webUrl = CardUrlGenerator.generate(data);
-    await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함\n$webUrl'));
+    await SharePlus.instance.share(ShareParams(text: webUrl));
   }
 
   void _showQrDialogFromEditor(BuildContext context, AppProvider provider) {

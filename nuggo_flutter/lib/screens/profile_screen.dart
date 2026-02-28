@@ -1084,9 +1084,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final webUrl = CardUrlGenerator.generate(selected.data);
 
-    await SharePlus.instance.share(ShareParams(
-      text: '$name 님의 디지털 명함\n$webUrl',
-    ));
+    await SharePlus.instance.share(ShareParams(text: webUrl));
     setState(() {
       _recentSends.insert(0, _RecentSendItem(
         id: DateTime.now().millisecondsSinceEpoch.toString(),

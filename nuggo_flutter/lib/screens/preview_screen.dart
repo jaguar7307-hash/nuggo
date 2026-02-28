@@ -315,10 +315,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       }
       if (!mounted) return;
       final webUrl = CardUrlGenerator.generate(data);
-      final name = data.fullName.isNotEmpty ? data.fullName : 'NUGGO';
-      await SharePlus.instance.share(
-        ShareParams(text: '$name 님의 디지털 명함\n$webUrl'),
-      );
+      await SharePlus.instance.share(ShareParams(text: webUrl));
       return;
     }
     if (type == 'mail') {
@@ -485,9 +482,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 return;
                               }
                               final webUrl = CardUrlGenerator.generate(data);
-                              final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
                               await SharePlus.instance.share(
-                                ShareParams(text: '$name 님의 디지털 명함\n$webUrl'),
+                                ShareParams(text: webUrl),
                               );
                             },
                           ),

@@ -8,91 +8,107 @@
       <stop offset="0%" style="stop-color:#1E2030"/>
       <stop offset="100%" style="stop-color:#252840"/>
     </linearGradient>
+    <linearGradient id="btnGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6366F1"/>
+      <stop offset="100%" style="stop-color:#818CF8"/>
+    </linearGradient>
     <filter id="shadow">
       <feDropShadow dx="0" dy="20" stdDeviation="30" flood-color="rgba(0,0,0,0.6)"/>
     </filter>
+    <filter id="glow">
+      <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="rgba(99,102,241,0.4)"/>
+    </filter>
+    <clipPath id="cardClip">
+      <rect x="530" y="60" width="620" height="510" rx="32"/>
+    </clipPath>
   </defs>
 
-  <!-- 0½ -->
+  <!-- ?? -->
   <rect width="1200" height="630" fill="url(#bg)"/>
 
-  <!-- ¥Ý Ð -->
-  <circle cx="950" cy="100" r="200" fill="rgba(99,102,241,0.08)"/>
-  <circle cx="200" cy="500" r="150" fill="rgba(99,102,241,0.05)"/>
+  <!-- ?? ?? -->
+  <circle cx="980" cy="80" r="220" fill="rgba(99,102,241,0.06)"/>
+  <circle cx="180" cy="520" r="160" fill="rgba(99,102,241,0.04)"/>
+  <circle cx="400" cy="60" r="80" fill="rgba(255,255,255,0.02)"/>
 
-  <!-- …h tÜ -->
-  <rect x="560" y="80" width="580" height="470" rx="32" fill="url(#cardBg)" filter="url(#shadow)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  <!-- ?? ?? -->
+  <rect x="530" y="60" width="620" height="510" rx="32" fill="url(#cardBg)" filter="url(#shadow)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
 
-  <!-- tÜ ´€ ¬\t -->
-  <text x="850" y="155" text-anchor="middle" font-family="Manrope, sans-serif" font-size="11" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.4)">DIGITAL BUSINESS CARD</text>
+  <!-- ?? ??: ??? -->
+  <text x="840" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="3" fill="rgba(255,255,255,0.35)">DIGITAL BUSINESS CARD</text>
+  <line x1="760" y1="140" x2="920" y2="140" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
 
-  <!-- l„  -->
-  <line x1="780" y1="170" x2="920" y2="170" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+  <!-- ?? / ?? / ?? -->
+  <text x="840" y="205" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="800" fill="white">&#xCC21;&#xACFC;&#xC774;&#xB984;</text>
+  <text x="840" y="238" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="3" fill="#A5B4FC">PRODUCT MANAGER</text>
+  <text x="840" y="260" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" letter-spacing="2" fill="rgba(255,255,255,0.35)">NUGGO INC.</text>
 
-  <!-- t„ t¤@T -->
-  <text x="850" y="225" text-anchor="middle" font-family="Manrope, sans-serif" font-size="28" font-weight="800" fill="white">M8Ù</text>
-  <text x="850" y="252" text-anchor="middle" font-family="Manrope, sans-serif" font-size="11" font-weight="700" letter-spacing="3" fill="#A5B4FC">PRODUCT MANAGER</text>
-  <text x="850" y="272" text-anchor="middle" font-family="Manrope, sans-serif" font-size="9" letter-spacing="2" fill="rgba(255,255,255,0.4)">NUGGO INC.</text>
+  <!-- ??? -->
+  <line x1="570" y1="280" x2="1110" y2="280" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
 
-  <!-- l„  -->
-  <line x1="600" y1="292" x2="1100" y2="292" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
-
-  <!-- aX DtX ‰ 1 -->
+  <!-- ??? ? 1: ??·SMS·??? -->
   <g>
-    <!-- T -->
-    <rect x="650" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
-    <text x="679" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">call</text>
-    <text x="679" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">PHONE</text>
+    <rect x="614" y="298" width="62" height="62" rx="16" fill="rgba(255,255,255,0.09)"/>
+    <text x="645" y="322" text-anchor="middle" font-family="Arial" font-size="10" fill="rgba(255,255,255,0.8)">&#128222;</text>
+    <text x="645" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">PHONE</text>
 
-    <!-- SMS -->
-    <rect x="726" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
-    <text x="755" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">sms</text>
-    <text x="755" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">SMS</text>
+    <rect x="694" y="298" width="62" height="62" rx="16" fill="rgba(255,255,255,0.09)"/>
+    <text x="725" y="322" text-anchor="middle" font-family="Arial" font-size="10" fill="rgba(255,255,255,0.8)">&#128172;</text>
+    <text x="725" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">SMS</text>
 
-    <!-- tT| -->
-    <rect x="802" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
-    <text x="831" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">mail</text>
-    <text x="831" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">EMAIL</text>
+    <rect x="774" y="298" width="62" height="62" rx="16" fill="rgba(255,255,255,0.09)"/>
+    <text x="805" y="322" text-anchor="middle" font-family="Arial" font-size="10" fill="rgba(255,255,255,0.8)">&#128140;</text>
+    <text x="805" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">EMAIL</text>
   </g>
 
-  <!-- aX DtX ‰ 2 -->
+  <!-- ??? ? 2: ?·???·SNS -->
   <g>
-    <rect x="878" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
-    <text x="907" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">language</text>
-    <text x="907" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">WEB</text>
+    <rect x="854" y="298" width="62" height="62" rx="16" fill="rgba(255,255,255,0.09)"/>
+    <text x="885" y="322" text-anchor="middle" font-family="Arial" font-size="10" fill="rgba(255,255,255,0.8)">&#127760;</text>
+    <text x="885" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">WEB</text>
 
-    <rect x="954" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
-    <text x="983" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">chat</text>
-    <text x="983" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">KAKAO</text>
+    <rect x="934" y="298" width="62" height="62" rx="16" fill="rgba(255,255,255,0.09)"/>
+    <text x="965" y="322" text-anchor="middle" font-family="Arial" font-size="10" fill="rgba(255,255,255,0.8)">&#128172;</text>
+    <text x="965" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">KAKAO</text>
 
-    <rect x="1030" y="310" width="58" height="58" rx="16" fill="rgba(255,255,255,0.08)"/>
-    <text x="1059" y="346" text-anchor="middle" font-family="'Material Icons Round'" font-size="22" fill="rgba(255,255,255,0.85)">share</text>
-    <text x="1059" y="364" text-anchor="middle" font-family="Manrope, sans-serif" font-size="7" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">SNS</text>
+    <rect x="1014" y="298" width="62" height="62" rx="16" fill="rgba(255,255,255,0.09)"/>
+    <text x="1045" y="322" text-anchor="middle" font-family="Arial" font-size="10" fill="rgba(255,255,255,0.8)">&#128257;</text>
+    <text x="1045" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="700" letter-spacing="0.5" fill="rgba(255,255,255,0.4)">SNS</text>
   </g>
 
-  <!-- üŒ  -->
-  <rect x="620" y="388" width="460" height="32" rx="10" fill="rgba(255,255,255,0.06)"/>
-  <text x="850" y="409" text-anchor="middle" font-family="Manrope, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="rgba(255,255,255,0.4)">SEOUL, KOREA</text>
+  <!-- ?? ? -->
+  <rect x="590" y="378" width="500" height="34" rx="10" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+  <text x="840" y="400" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" fill="rgba(255,255,255,0.35)">&#x1F4CD; SEOUL, KOREA</text>
 
-  <!-- Xè 0X Œ¸ -->
-  <text x="850" y="460" text-anchor="middle" font-family="Manrope, sans-serif" font-size="11" font-weight="600" fill="rgba(255,255,255,0.3)">íXt \ ð°</text>
-  <text x="850" y="480" text-anchor="middle" font-family="Manrope, sans-serif" font-size="9" fill="rgba(255,255,255,0.2)">Touch to interact</text>
+  <!-- ?? ?? ?? -->
+  <rect x="570" y="430" width="540" height="110" rx="0" fill="rgba(0,0,0,0)"/>
 
-  <!-- |½ M¤¸ í -->
-  <text x="80" y="200" font-family="Manrope, sans-serif" font-size="52" font-weight="800" fill="white" letter-spacing="-2">
+  <!-- ?? ?? ??? ?? -->
+  <rect x="590" y="440" width="330" height="46" rx="23" fill="url(#btnGrad)" filter="url(#glow)"/>
+  <text x="755" y="469" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="800" fill="white">&#x2728; &#xB098;&#xB3C4; &#xBA85;&#xD568; &#xB9CC;&#xB4E4;&#xAE30;</text>
+
+  <!-- ?? ?? ?? (??) -->
+  <circle cx="974" cy="463" r="27" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+  <text x="974" y="470" text-anchor="middle" font-family="Arial" font-size="16" fill="rgba(255,255,255,0.85)">&#x1F464;&#x207A;</text>
+
+  <!-- ? ?? -->
+  <text x="840" y="512" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="rgba(255,255,255,0.2)">&#x1F446; Tap to interact · &#xD0ED;&#xD558;&#xBA74; &#xBC14;&#xB85C; &#xC5F0;&#xACB0;</text>
+
+  <!-- ?? ?? ??? ?? ?? -->
+  <!-- NUGGO ?? -->
+  <text x="80" y="190" font-family="Arial, sans-serif" font-size="56" font-weight="800" fill="white" letter-spacing="-2">
     <tspan fill="#0055FF">NUG</tspan><tspan fill="#FF4F00">GO</tspan>
   </text>
+  <text x="82" y="228" font-family="Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="1.5" fill="rgba(255,255,255,0.45)">DIGITAL BUSINESS CARD</text>
 
-  <text x="82" y="240" font-family="Manrope, sans-serif" font-size="14" font-weight="700" letter-spacing="1" fill="rgba(255,255,255,0.5)">DIGITAL BUSINESS CARD</text>
+  <!-- ?? ??? -->
+  <text x="82" y="300" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="white">&#xC2A4;&#xB9C8;&#xD2B8; &#xB514;&#xC9C0;&#xD138;</text>
+  <text x="82" y="334" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="white">&#xBA85;&#xD568; &#xD50C;&#xB7AB;&#xD3FC;</text>
 
-  <!-- $… M¤¸ -->
-  <text x="82" y="310" font-family="Manrope, sans-serif" font-size="22" font-weight="700" fill="white">tøÀ˜ü ôt”</text>
-  <text x="82" y="345" font-family="Manrope, sans-serif" font-size="22" font-weight="700" fill="white">x0™ð …h</text>
+  <text x="82" y="384" font-family="Arial, sans-serif" font-size="14" fill="rgba(255,255,255,0.45)">&#xC804;&#xD654;&#xB3C4;&#xBD81;&#xC5D0; &#xC800;&#xC7A5; · &#xCE74;&#xCE74;&#xC624;&#xD1A1; &#xC5F0;&#xACB0;</text>
+  <text x="82" y="410" font-family="Arial, sans-serif" font-size="14" fill="rgba(255,255,255,0.45)">&#xC544;&#xC774;&#xCF58; &#xD55C; &#xBC88;&#xC73C;&#xB85C; &#xBC14;&#xB85C; &#xC2E4;&#xD589;</text>
 
-  <text x="82" y="395" font-family="Manrope, sans-serif" font-size="14" fill="rgba(255,255,255,0.5)">íXt T·tT|·tt$</text>
-  <text x="82" y="420" font-family="Manrope, sans-serif" font-size="14" fill="rgba(255,255,255,0.5)">\ ð°” ¤È¸ …h</text>
-
-  <!-- CTA „¼ -->
-  <rect x="82" y="460" width="180" height="44" rx="12" fill="#6366F1"/>
-  <text x="172" y="488" text-anchor="middle" font-family="Manrope, sans-serif" font-size="13" font-weight="700" fill="white">…h ô0 ’</text>
+  <!-- CTA ?? -->
+  <rect x="82" y="448" width="200" height="46" rx="12" fill="#6366F1"/>
+  <text x="182" y="477" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="white">&#xB9AC;&#xD06C; &#xD0ED; &#x2192; &#xC5F4;&#xAE30;</text>
 </svg>

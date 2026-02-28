@@ -102,27 +102,23 @@ class _SendCardSheetState extends State<SendCardSheet> {
     }
   }
 
-  // ── 카카오톡: OS 공유시트 → 링크 전송
-  //    수신자: 링크 미리보기(OG 이미지) → 탭 → 웹 명함 오픈 → 아이콘 실제 동작
+  // ── 카카오톡: URL만 전송 → KakaoTalk이 링크 미리보기 1개로 표시
+  //    수신자: og:image 카드 이미지 미리보기 → 탭 → 웹 명함 오픈 → 아이콘 실제 동작
   Future<void> _handleKakao(AppProvider provider) async {
     final url = _cardUrl();
-    final name = _displayName();
     bool success = false;
     try {
-      final result = await SharePlus.instance.share(
-        ShareParams(text: '$name 님의 디지털 명함\n$url'),
-      );
+      final result = await SharePlus.instance.share(ShareParams(text: url));
       success = result.status == ShareResultStatus.success;
     } catch (_) {}
     if (mounted) _showResult(success, '카카오톡', provider);
     if (mounted) Navigator.of(context).pop();
   }
 
-  // ── 문자(SMS): sms: 스킴으로 URL 포함 전송
+  // ── 문자(SMS): URL만 본문에 전송 (iMessage Rich Link Preview 지원)
   Future<void> _handleSms(AppProvider provider) async {
     final url = _cardUrl();
-    final name = _displayName();
-    final body = Uri.encodeComponent('[$name 님의 디지털 명함]\n$url');
+    final body = Uri.encodeComponent(url);
     bool launched = false;
     try {
       final uri = Uri.parse('sms:?body=$body');
@@ -133,9 +129,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
     } catch (_) {}
     if (!launched) {
       try {
-        final result = await SharePlus.instance.share(
-          ShareParams(text: '[$name 님의 디지털 명함]\n$url'),
-        );
+        final result = await SharePlus.instance.share(ShareParams(text: url));
         launched = result.status == ShareResultStatus.success;
       } catch (_) {
         await Clipboard.setData(ClipboardData(text: url));
@@ -153,14 +147,13 @@ class _SendCardSheetState extends State<SendCardSheet> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  // ── 이메일: mailto: 스킴으로 URL 포함 전송
+  // ── 이메일: URL만 본문에 전송
   Future<void> _handleEmail(AppProvider provider) async {
     final url = _cardUrl();
     final name = _displayName();
     final subject = Uri.encodeComponent(
         _tr('$name 님의 디지털 명함', "$name's Digital Business Card"));
-    final body = Uri.encodeComponent(
-        '$name 님의 명함을 공유합니다.\n\n아래 링크를 탭하면 전화·이메일·카카오 바로 연결됩니다.\n\n$url');
+    final body = Uri.encodeComponent(url);
     bool launched = false;
     try {
       final uri = Uri.parse('mailto:?subject=$subject&body=$body');
@@ -171,9 +164,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
     } catch (_) {}
     if (!launched) {
       try {
-        final result = await SharePlus.instance.share(
-          ShareParams(text: '[$name 님의 디지털 명함]\n$url'),
-        );
+        final result = await SharePlus.instance.share(ShareParams(text: url));
         launched = result.status == ShareResultStatus.success;
       } catch (_) {
         await Clipboard.setData(ClipboardData(text: url));
