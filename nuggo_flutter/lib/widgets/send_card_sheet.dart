@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 
 import '../models/card_data.dart';
 import '../providers/app_provider.dart';
+import '../services/card_capture_service.dart';
 import '../services/card_url_generator.dart';
 import 'business_card_web_view.dart';
 import 'login_bottom_sheet.dart';
@@ -100,78 +99,56 @@ class _SendCardSheetState extends State<SendCardSheet> {
       ? CardUrlGenerator.generate(widget.cardData!)
       : 'https://jaguar7307-hash.github.io/nuggo/card.html';
 
-  // ── 카카오톡: URL 링크만 전송 ─────────────────────────────────────────────
-  Future<void> _handleKakao(AppProvider provider) async {
-    Navigator.of(context).pop();
-    final url = _cardUrl();
-    final name = _displayName();
+  /// 명함을 PNG 이미지로 캡처한 뒤 이미지 파일만 공유 (링크/텍스트 없음).
+  Future<void> _shareImageOnly(String channel, AppProvider provider) async {
+    if (widget.cardData == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_tr('공유할 명함 데이터가 없습니다.', 'No card data to share.')),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final xFile = await CardCaptureService.captureCard(context, widget.cardData!);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (xFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_tr('명함 이미지 생성에 실패했습니다.', 'Failed to create card image.')),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     bool success = false;
     try {
       final result = await SharePlus.instance.share(
-        ShareParams(text: '$name 님의 디지털 명함\n$url'),
+        ShareParams(files: [xFile]),
       );
       success = result.status == ShareResultStatus.success;
-    } catch (_) {
-      try {
-        await Clipboard.setData(ClipboardData(text: url));
-        success = true;
-      } catch (_) {}
-    }
-    if (mounted) _showResult(success, '카카오톡', provider);
+    } catch (_) {}
+
+    if (mounted) _showResult(success, channel, provider);
+    if (mounted) Navigator.of(context).pop();
   }
 
-  // ── 문자(SMS): sms: 직접 실행 (URL 포함 텍스트) ──────────────────────
-  Future<void> _handleSms(AppProvider provider) async {
-    Navigator.of(context).pop();
-    final name = _displayName();
-    final url = _cardUrl();
-    final body = Uri.encodeComponent('$name 님의 디지털 명함\n$url');
-    bool launched = false;
-    try {
-      final uri = Uri.parse('sms:?body=$body');
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        launched = true;
-      }
-    } catch (_) {}
-    if (!launched) {
-      // SMS 실패 → OS 공유시트
-      try {
-        await SharePlus.instance.share(
-          ShareParams(text: '$name 님의 디지털 명함\n$url'),
-        );
-      } catch (_) {
-        await Clipboard.setData(ClipboardData(text: url));
-      }
-    }
-    _showResult(launched, '문자(SMS)', provider);
-  }
+  Future<void> _handleKakao(AppProvider provider) async =>
+      _shareImageOnly('카카오톡', provider);
 
-  // ── 이메일: mailto: 직접 실행 (URL 포함 본문) ────────────────────────
-  Future<void> _handleEmail(AppProvider provider) async {
-    Navigator.of(context).pop();
-    final name = _displayName();
-    final url = _cardUrl();
-    final subject = Uri.encodeComponent(_tr('$name 님의 디지털 명함', "$name's Digital Card"));
-    final body = Uri.encodeComponent('$name 님의 명함을 공유합니다.\n\n아래 링크를 탭하면 전화·이메일·카카오 바로 연결됩니다.\n$url');
-    bool launched = false;
-    try {
-      final uri = Uri.parse('mailto:?subject=$subject&body=$body');
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        launched = true;
-      }
-    } catch (_) {}
-    if (!launched) {
-      try {
-        await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함\n$url'));
-      } catch (_) {
-        await Clipboard.setData(ClipboardData(text: url));
-      }
-    }
-    _showResult(launched, '이메일', provider);
-  }
+  Future<void> _handleSms(AppProvider provider) async =>
+      _shareImageOnly('문자(SMS)', provider);
+
+  Future<void> _handleEmail(AppProvider provider) async =>
+      _shareImageOnly('이메일', provider);
 
   // ── 웹카드 미리보기 ──────────────────────────────────────────────────
   Future<void> _handleWebPreview() async {
