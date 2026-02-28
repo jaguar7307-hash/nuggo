@@ -247,7 +247,9 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
+    return ColoredBox(
+      color: isDark ? const Color(0xFF020617) : const Color(0xFFF8F9FA),
+      child: GestureDetector(
       // 배경 탭 시 키보드 내리기
       onTap: () => FocusScope.of(context).unfocus(),
       // 아래로 스와이프 시 키보드 내리기
@@ -285,7 +287,8 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
         ],
       ),
-    );
+    ), // GestureDetector
+    ); // ColoredBox
   }
 
   // ═══════════════════════════════════════════
