@@ -9,54 +9,49 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/card_data.dart';
-import '../widgets/business_card.dart';
+import '../widgets/card_share_canvas.dart';
 
-/// BusinessCard 위젯을 오프스크린에서 렌더링해 PNG XFile로 반환.
-/// 화면에 표시 중인 카드 위젯과 무관하게 항상 고화질 캡처 가능.
+/// CardShareCanvas(카드+푸터)를 오프스크린에서 렌더링해 PNG XFile로 반환.
 class CardCaptureService {
-  static const double _cardW = kBusinessCardAspectWidth;
-  static const double _cardH = kBusinessCardAspectHeight;
   static const double _pixelRatio = 3.0;
 
-  /// [context]: BuildContext (Overlay 접근용)
-  /// [data]: 명함 데이터
-  /// 성공 시 PNG XFile 반환, 실패 시 null
+  /// 명함 이미지(카드+나도명함만들기/친구추가 푸터) 캡처 후 XFile 반환.
+  /// 반드시 valid BuildContext (Overlay 접근 가능) 를 전달해야 한다.
   static Future<XFile?> captureCard(
     BuildContext context,
     CardData data,
   ) async {
+    if (!context.mounted) return null;
+
     final repaintKey = GlobalKey();
-    final completer = Completer<Uint8List?>();
+    Completer<Uint8List?> completer = Completer();
     late OverlayEntry entry;
 
     entry = OverlayEntry(
       builder: (_) => Positioned(
-        // 화면 밖에 렌더링 (시각적으로 보이지 않음)
-        left: -(_cardW * _pixelRatio * 2),
+        left: -(CardShareCanvas.canvasWidth * _pixelRatio * 2),
         top: 0,
-        width: _cardW,
-        height: _cardH,
+        width: CardShareCanvas.canvasWidth,
+        height: CardShareCanvas.canvasHeight,
         child: MediaQuery(
-          data: const MediaQueryData(),
+          data: const MediaQueryData(devicePixelRatio: 1.0),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: RepaintBoundary(
               key: repaintKey,
-              child: BusinessCard(data: data),
+              child: CardShareCanvas(data: data),
             ),
           ),
         ),
       ),
     );
 
-    // Overlay에 삽입 후 렌더링 대기
-    if (!context.mounted) return null;
     final overlay = Overlay.of(context, rootOverlay: true);
     overlay.insert(entry);
 
     try {
-      // 프레임 2번 대기 (레이아웃+페인트 완료 보장)
-      await Future.delayed(const Duration(milliseconds: 250));
+      // 프레임 2회 대기 (레이아웃 + 페인트 완료)
+      await Future.delayed(const Duration(milliseconds: 300));
 
       final renderObj = repaintKey.currentContext?.findRenderObject();
       if (renderObj == null || renderObj is! RenderRepaintBoundary) {
@@ -67,13 +62,8 @@ class CardCaptureService {
       final image = await renderObj.toImage(pixelRatio: _pixelRatio);
       final byteData =
           await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        entry.remove();
-        return null;
-      }
-
-      completer.complete(byteData.buffer.asUint8List());
-    } catch (e) {
+      completer.complete(byteData?.buffer.asUint8List());
+    } catch (_) {
       if (!completer.isCompleted) completer.complete(null);
     } finally {
       entry.remove();
@@ -83,10 +73,9 @@ class CardCaptureService {
     if (bytes == null) return null;
 
     final dir = await getTemporaryDirectory();
-    final safeName = (data.fullName.trim().replaceAll(RegExp(r'[^\w]'), '_'))
-        .isNotEmpty
-        ? data.fullName.trim().replaceAll(RegExp(r'[^\w]'), '_')
-        : 'card';
+    final safeName = data.fullName.trim().isEmpty
+        ? 'card'
+        : data.fullName.trim().replaceAll(RegExp(r'[^\w가-힣]'), '_');
     final file = File('${dir.path}/${safeName}_nuggo.png');
     await file.writeAsBytes(bytes);
     return XFile(file.path, mimeType: 'image/png');
