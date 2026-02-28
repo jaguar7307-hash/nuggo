@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../constants/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -12,9 +15,8 @@ import '../constants/theme.dart';
 import '../providers/app_provider.dart';
 import '../models/card_data.dart';
 import '../widgets/nuggo_logo.dart';
-import '../widgets/send_card_sheet.dart';
 import '../widgets/login_bottom_sheet.dart';
-import '../services/card_capture_service.dart';
+import '../services/card_url_generator.dart';
 
 /// 원본 React PreviewView와 동일: 풀스크린 명함 배경 + 로고/슬로건/이름/3x2 액션/주소/하단 CTA
 class PreviewScreen extends StatefulWidget {
@@ -26,6 +28,30 @@ class PreviewScreen extends StatefulWidget {
 
 class _PreviewScreenState extends State<PreviewScreen> {
   bool _showNotification = true;
+  final GlobalKey _cardRepaintKey = GlobalKey();
+  bool _isCapturing = false;
+
+  // ── 미리보기 카드 전체를 PNG로 캡처 ──────────────────────────────────
+  Future<XFile?> _capturePreview(CardData data) async {
+    try {
+      final boundary = _cardRepaintKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return null;
+      final bytes = byteData.buffer.asUint8List();
+      final dir = await getTemporaryDirectory();
+      final safeName = data.fullName.trim().isEmpty
+          ? 'card'
+          : data.fullName.trim().replaceAll(RegExp(r'[^\w가-힣]'), '_');
+      final file = File('${dir.path}/${safeName}_preview.png');
+      await file.writeAsBytes(bytes);
+      return XFile(file.path, mimeType: 'image/png');
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   void initState() {
@@ -287,27 +313,17 @@ class _PreviewScreenState extends State<PreviewScreen> {
         if (mounted) await LoginBottomSheet.show(context);
         return;
       }
-      // 명함 이미지 캡처 → OS 공유시트
-      final displayName =
-          data.fullName.isNotEmpty ? data.fullName : 'NUGGO';
-      final subject = '${provider.settings.language == 'en' ? '' : ''}$displayName${provider.settings.language == 'en' ? '\'s Card' : ' 명함'}';
-      XFile? imageFile;
-      if (mounted) {
-        imageFile = await CardCaptureService.captureCard(context, data);
-      }
       if (!mounted) return;
-      final ShareResult result;
+      setState(() => _isCapturing = true);
+      final imageFile = await _capturePreview(data);
+      if (!mounted) return;
+      setState(() => _isCapturing = false);
+      final webUrl = CardUrlGenerator.generate(data);
       if (imageFile != null) {
-        result = await SharePlus.instance.share(
-          ShareParams(files: [imageFile], subject: subject),
-        );
+        await SharePlus.instance.share(ShareParams(files: [imageFile], text: '🔗 $webUrl'));
       } else {
-        result = await SharePlus.instance.share(
-          ShareParams(text: displayName, subject: subject),
-        );
-      }
-      if (provider.isGuest && result.status == ShareResultStatus.success) {
-        await provider.markGuestShareTrialUsed();
+        final name = data.fullName.isNotEmpty ? data.fullName : 'NUGGO';
+        await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함\n$webUrl'));
       }
       return;
     }
@@ -380,7 +396,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
         final createBtn = const Color(0xFFFF8A3D).withValues(alpha: 0.6);
         const lang = 'ko';
 
-        return Stack(
+        return RepaintBoundary(
+          key: _cardRepaintKey,
+          child: Stack(
           fit: StackFit.expand,
           children: [
             Positioned.fill(
@@ -443,9 +461,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
                           ),
                           const Spacer(),
                           _previewTopBtn(
-                            icon: Icons.send,
+                            icon: _isCapturing ? Icons.hourglass_top : Icons.send,
                             isLight: isLight,
                             onTap: () async {
+                              if (_isCapturing) return;
                               final prereq =
                                   provider.validateGuestSharePrerequisites(data);
                               if (prereq != null) {
@@ -471,22 +490,23 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 }
                                 return;
                               }
-                              String url = data.shareLink.trim().isEmpty
-                                  ? 'https://nuggo.me'
-                                  : data.shareLink;
-                              if (!url.startsWith('http')) {
-                                url = 'https://$url';
+                              // 미리보기 화면 전체를 이미지로 캡처 후 공유
+                              setState(() => _isCapturing = true);
+                              final imageFile = await _capturePreview(data);
+                              if (!mounted) return;
+                              setState(() => _isCapturing = false);
+
+                              final webUrl = CardUrlGenerator.generate(data);
+                              if (imageFile != null) {
+                                await SharePlus.instance.share(
+                                  ShareParams(files: [imageFile], text: '🔗 $webUrl'),
+                                );
+                              } else {
+                                final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
+                                await SharePlus.instance.share(
+                                  ShareParams(text: '$name 님의 디지털 명함\n$webUrl'),
+                                );
                               }
-                              final name = data.fullName.isEmpty
-                                  ? 'NUGGO'
-                                  : data.fullName;
-                              SendCardSheet.show(
-                                context,
-                                url: url,
-                                name: name,
-                                language: provider.settings.language,
-                                cardData: data,
-                              );
                             },
                           ),
                           const SizedBox(width: 4),
@@ -865,7 +885,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
               ),             // DefaultTextStyle.merge
             ),               // SafeArea
           ],
-        );
+        ),           // Stack
+        );           // RepaintBoundary
       },
     );
   }

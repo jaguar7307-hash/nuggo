@@ -11,7 +11,7 @@ import 'business_card_web_view.dart';
 import 'login_bottom_sheet.dart';
 
 /// 공통 명함 보내기 바텀시트
-/// 전송 포맷: PNG 이미지 단독 (URL 텍스트 없이)
+/// 전송 포맷: PNG 이미지 단독 (URL 텍스트 없이). 웹 미리보기(윈도우 포함) 지원.
 class SendCardSheet extends StatefulWidget {
   final String url;
   final String name;
@@ -65,7 +65,6 @@ class _SendCardSheetState extends State<SendCardSheet> {
           ? widget.cardData!.fullName.trim()
           : widget.name;
 
-  // ── 게스트 체크 ──────────────────────────────────────────────────────
   bool _guestCheck(AppProvider provider) {
     if (!provider.canAttemptGuestShare()) {
       LoginBottomSheet.show(context);
@@ -74,7 +73,6 @@ class _SendCardSheetState extends State<SendCardSheet> {
     return true;
   }
 
-  // ── 전송 결과 스낵바 ──────────────────────────────────────────────────
   void _showResult(bool success, String channel, AppProvider provider) {
     if (!mounted) return;
     if (success) {
@@ -97,7 +95,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
 
   String _cardUrl() => widget.cardData != null
       ? CardUrlGenerator.generate(widget.cardData!)
-      : 'https://jaguar7307-hash.github.io/nuggo/card.html';
+      : widget.url;
 
   /// 명함을 PNG 이미지로 캡처한 뒤 이미지 파일만 공유 (링크/텍스트 없음).
   Future<void> _shareImageOnly(String channel, AppProvider provider) async {
@@ -150,7 +148,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
   Future<void> _handleEmail(AppProvider provider) async =>
       _shareImageOnly('이메일', provider);
 
-  // ── 웹카드 미리보기 ──────────────────────────────────────────────────
+  // ── 웹카드 미리보기 (윈도우 포함) ───────────────────────────────────────
   Future<void> _handleWebPreview() async {
     Navigator.of(context).pop();
     if (!mounted || widget.cardData == null) return;
@@ -158,16 +156,22 @@ class _SendCardSheetState extends State<SendCardSheet> {
   }
 
   Future<void> _doShare(String channel) async {
+    if (_isLoading) return;
     final provider = context.read<AppProvider>();
     if (!_guestCheck(provider)) return;
 
-    switch (channel) {
-      case '카카오톡':
-        await _handleKakao(provider);
-      case '문자(SMS)':
-        await _handleSms(provider);
-      case '이메일':
-        await _handleEmail(provider);
+    setState(() => _isLoading = true);
+    try {
+      switch (channel) {
+        case '카카오톡':
+          await _handleKakao(provider);
+        case '문자(SMS)':
+          await _handleSms(provider);
+        case '이메일':
+          await _handleEmail(provider);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -207,68 +211,49 @@ class _SendCardSheetState extends State<SendCardSheet> {
                   color: textColor,
                 ),
               ),
+              const SizedBox(height: 4),
+              Text(
+                _tr('받는 분이 명함 이미지를 보고 탭하면 바로 연결돼요', 'Recipient sees a preview and taps to connect'),
+                style: GoogleFonts.manrope(
+                  fontSize: 11,
+                  color: textColor.withValues(alpha: 0.5),
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 12),
               if (_isLoading)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 28),
-                  child: Column(
-                    children: [
-                      const CircularProgressIndicator(
-                        color: Color(0xFF6366F1),
-                        strokeWidth: 2.5,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _tr('명함 이미지 생성 중...', 'Creating card image...'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: textColor.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 28),
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF6366F1),
+                    strokeWidth: 2.5,
                   ),
                 )
               else ...[
-                // ① 인터랙티브 미리보기
-                if (widget.cardData != null) ...[
-                  _SendOptionTile(
-                    icon: Icons.preview_outlined,
-                    iconColor: const Color(0xFF6366F1),
-                    label: _tr('인터랙티브 카드 미리보기', 'Interactive Card Preview'),
-                    sublabel: _tr('전화·이메일·카카오 아이콘 탭으로 직접 연결', 'Tap icons to call, email, kakao'),
-                    onTap: _handleWebPreview,
-                    bgColor: bgColor,
-                    textColor: textColor,
-                  ),
-                  Divider(height: 1, color: dividerColor, indent: 72, endIndent: 24),
-                ],
-                // ② 카카오톡
                 _SendOptionTile(
                   icon: Icons.chat_bubble_outline,
                   iconColor: const Color(0xFFFFE000),
+                  iconBg: const Color(0xFF3A1F00),
                   label: _tr('카카오톡으로 보내기', 'Send via KakaoTalk'),
                   onTap: () => _doShare('카카오톡'),
-                  bgColor: bgColor,
                   textColor: textColor,
                 ),
                 Divider(height: 1, color: dividerColor, indent: 72, endIndent: 24),
-                // ③ 문자
                 _SendOptionTile(
                   icon: Icons.sms_outlined,
-                  iconColor: Colors.green.shade600,
+                  iconColor: const Color(0xFF34D399),
+                  iconBg: const Color(0xFF052E16),
                   label: _tr('문자(SMS)로 보내기', 'Send via SMS'),
                   onTap: () => _doShare('문자(SMS)'),
-                  bgColor: bgColor,
                   textColor: textColor,
                 ),
                 Divider(height: 1, color: dividerColor, indent: 72, endIndent: 24),
-                // ④ 이메일
                 _SendOptionTile(
                   icon: Icons.email_outlined,
-                  iconColor: Colors.red.shade500,
+                  iconColor: const Color(0xFFF87171),
+                  iconBg: const Color(0xFF2D0F0F),
                   label: _tr('이메일로 보내기', 'Send via Email'),
                   onTap: () => _doShare('이메일'),
-                  bgColor: bgColor,
                   textColor: textColor,
                 ),
               ],
@@ -283,19 +268,17 @@ class _SendCardSheetState extends State<SendCardSheet> {
 class _SendOptionTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
+  final Color iconBg;
   final String label;
-  final String? sublabel;
   final VoidCallback onTap;
-  final Color bgColor;
   final Color textColor;
 
   const _SendOptionTile({
     required this.icon,
     required this.iconColor,
+    required this.iconBg,
     required this.label,
-    this.sublabel,
     required this.onTap,
-    required this.bgColor,
     required this.textColor,
   });
 
@@ -306,48 +289,33 @@ class _SendOptionTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(10),
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(11),
                 ),
                 child: Icon(icon, color: iconColor, size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: GoogleFonts.manrope(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: textColor,
-                      ),
-                    ),
-                    if (sublabel != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        sublabel!,
-                        style: GoogleFonts.manrope(
-                          fontSize: 11,
-                          color: textColor.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  label,
+                  style: GoogleFonts.manrope(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
                 ),
               ),
               Icon(
                 Icons.chevron_right,
                 size: 20,
-                color: textColor.withValues(alpha: 0.4),
+                color: textColor.withValues(alpha: 0.35),
               ),
             ],
           ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:image_cropper/image_cropper.dart';
 
@@ -21,8 +22,9 @@ import '../constants/constants.dart';
 import '../constants/theme.dart';
 import '../widgets/business_card.dart';
 import '../widgets/card_display.dart';
-import '../widgets/send_card_sheet.dart';
+import 'package:share_plus/share_plus.dart';
 import '../widgets/login_bottom_sheet.dart';
+import '../services/card_url_generator.dart';
 
 class EditorScreen extends StatefulWidget {
   const EditorScreen({super.key});
@@ -40,6 +42,7 @@ class _EditorScreenState extends State<EditorScreen>
   double _prevKeyboardH = 0.0;
   final GlobalKey _backgroundSectionKey = GlobalKey();
   final GlobalKey _languageModeToggleKey = GlobalKey();
+  final GlobalKey _cardRepaintKey = GlobalKey();
   OverlayEntry? _languageModeOverlay;
 
   // 플로팅 저장 버튼을 카드 우측 상단(추가 버튼 위)에 고정 배치하기 위한 계산 상수
@@ -411,16 +414,19 @@ class _EditorScreenState extends State<EditorScreen>
                       Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          SizedBox(
-                            width: cardW,
-                            height: kBusinessCardAspectHeight,
-                            child: CardDisplay(
+                          RepaintBoundary(
+                            key: _cardRepaintKey,
+                            child: SizedBox(
                               width: cardW,
                               height: kBusinessCardAspectHeight,
-                              data: data,
-                              interactive: false,
-                              forceActionIconsEnabled: true,
-                              showShadow: false,
+                              child: CardDisplay(
+                                width: cardW,
+                                height: kBusinessCardAspectHeight,
+                                data: data,
+                                interactive: false,
+                                forceActionIconsEnabled: true,
+                                showShadow: false,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -557,10 +563,7 @@ class _EditorScreenState extends State<EditorScreen>
     if (prereq != null) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(prereq),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(prereq), behavior: SnackBarBehavior.floating),
       );
       return;
     }
@@ -568,18 +571,37 @@ class _EditorScreenState extends State<EditorScreen>
       if (context.mounted) await LoginBottomSheet.show(context);
       return;
     }
-    String url = data.shareLink.trim();
-    if (url.isEmpty) url = 'https://nuggo.me';
-    if (!url.startsWith('http')) url = 'https://$url';
+    // 에디터에 렌더링된 카드 이미지로 캡처 후 OS 공유
+    try {
+      final boundary = _cardRepaintKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary != null) {
+        final img = await boundary.toImage(pixelRatio: 3.0);
+        final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData != null && context.mounted) {
+          final bytes = byteData.buffer.asUint8List();
+          final dir = await getTemporaryDirectory();
+          final safeName = data.fullName.trim().isEmpty
+              ? 'card'
+              : data.fullName.trim().replaceAll(RegExp(r'[^\w가-힣]'), '_');
+          final file = File('${dir.path}/${safeName}_nuggo.png');
+          await file.writeAsBytes(bytes);
+          final webUrl = CardUrlGenerator.generate(data);
+          await SharePlus.instance.share(
+            ShareParams(
+              files: [XFile(file.path, mimeType: 'image/png')],
+              text: '🔗 $webUrl',
+            ),
+          );
+          return;
+        }
+      }
+    } catch (_) {}
+    // 캡처 실패 시 URL 폴백
+    if (!context.mounted) return;
     final name = data.fullName.isEmpty ? 'NUGGO' : data.fullName;
-    final language = provider.settings.language;
-    SendCardSheet.show(
-      context,
-      url: url,
-      name: name,
-      language: language,
-      cardData: data,
-    );
+    final webUrl = CardUrlGenerator.generate(data);
+    await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함\n$webUrl'));
   }
 
   void _showQrDialogFromEditor(BuildContext context, AppProvider provider) {
@@ -2356,9 +2378,16 @@ class _EditorScreenState extends State<EditorScreen>
         ? null
         : provider.savedProfiles.where((p) => p.id == activeId).firstOrNull;
     final isUpdateMode = activeProfile != null;
-    final nameController = TextEditingController(
-      text: activeProfile?.name ?? '',
-    );
+
+    // 기존 프로필명 OR 이름 OR '내 명함' 순으로 기본값 자동 입력
+    final defaultName = activeProfile?.name
+        ?? (provider.currentCardData.fullName.trim().isNotEmpty
+            ? provider.currentCardData.fullName.trim()
+            : '내 명함');
+    final nameController = TextEditingController(text: defaultName)
+      ..selection = TextSelection(
+        baseOffset: 0, extentOffset: defaultName.length,
+      );
 
     Future<void> saveAs(
       BuildContext dialogContext, {
@@ -2396,13 +2425,8 @@ class _EditorScreenState extends State<EditorScreen>
       builder: (dialogContext) {
         final mq = MediaQuery.of(dialogContext);
         final maxW = (mq.size.width - 56).clamp(240.0, 300.0);
-        final keyboardInset = mq.viewInsets.bottom;
-        return AnimatedPadding(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(bottom: keyboardInset + 12),
-          child: AlertDialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+        return AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
             scrollable: true,
             title: Text(
               isUpdateMode
@@ -2465,7 +2489,6 @@ class _EditorScreenState extends State<EditorScreen>
                 ),
               ),
             ],
-          ),
         );
     },
     );

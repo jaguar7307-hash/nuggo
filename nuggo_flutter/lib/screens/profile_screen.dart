@@ -1,11 +1,14 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../constants/constants.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -18,9 +21,8 @@ import '../providers/app_provider.dart';
 import '../widgets/digital_card.dart';
 import '../widgets/business_card.dart' show kBusinessCardAspectRatio;
 import '../widgets/card_display.dart';
-import '../widgets/send_card_sheet.dart';
 import '../widgets/login_bottom_sheet.dart';
-import '../services/card_capture_service.dart';
+import '../services/card_url_generator.dart';
 
 /// ?? ?? ?? (CRM?)
 class _RecentSendItem {
@@ -61,6 +63,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String? _selectedProfileId;
+  final GlobalKey _cardRepaintKey = GlobalKey();
 
   static const Color _bgDark = Color(0xFF101822);
   static const Color _textMuted = Color(0xFF64748B);
@@ -278,15 +281,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: SizedBox(
-                width: cardW,
-                height: cardH,
-                child: CardDisplay(
+              child: RepaintBoundary(
+                key: _cardRepaintKey,
+                child: SizedBox(
                   width: cardW,
                   height: cardH,
-                  data: data,
-                  interactive: false, // ? ??: ??? (??? ???????)
-                  forceActionIconsEnabled: true, // ?? ????? ??? ??
+                  child: CardDisplay(
+                    width: cardW,
+                    height: cardH,
+                    data: data,
+                    interactive: false,
+                    forceActionIconsEnabled: true,
+                  ),
                 ),
               ),
             ),
@@ -1021,6 +1027,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ── 화면에 렌더링된 카드를 PNG로 캡처 ──────────────────────────────
+  Future<XFile?> _captureCard(CardData data) async {
+    try {
+      final boundary = _cardRepaintKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return null;
+      final bytes = byteData.buffer.asUint8List();
+      final dir = await getTemporaryDirectory();
+      final safeName = data.fullName.trim().isEmpty
+          ? 'card'
+          : data.fullName.trim().replaceAll(RegExp(r'[^\w가-힣]'), '_');
+      final file = File('${dir.path}/${safeName}_nuggo.png');
+      await file.writeAsBytes(bytes);
+      return XFile(file.path, mimeType: 'image/png');
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _showSendSheet(
     BuildContext context,
     AppProvider provider,
@@ -1046,39 +1074,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (context.mounted) await LoginBottomSheet.show(context);
       return;
     }
-    String url = selected.data.shareLink.trim();
-    if (url.isEmpty) url = 'https://nuggo.me';
-    if (!url.startsWith('http')) url = 'https://$url';
+
+    final imageFile = await _captureCard(selected.data);
+    if (!context.mounted) return;
 
     final name = selected.data.fullName.isEmpty
         ? selected.name
         : selected.data.fullName;
 
-    void recordSend(String method) {
-      setState(() {
-        _recentSends.insert(
-          0,
-          _RecentSendItem(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            name: name,
-            method: method,
-            time: '방금 전',
-            revisitCount: 0,
-            viewCount: 0,
-            phone: selected.data.phone,
-          ),
-        );
-      });
-    }
+    // 인터랙티브 웹 카드 URL (이미지와 함께 전송해 상대방이 탭으로 연결 가능)
+    final webUrl = CardUrlGenerator.generate(selected.data);
 
-    SendCardSheet.show(
-      context,
-      url: url,
-      name: name,
-      language: language,
-      cardData: selected.data,
-      onRecordSend: recordSend,
-    );
+    if (imageFile != null) {
+      // 이미지 + 웹 URL 텍스트 함께 공유 → 상대방이 이미지 보고 링크로 인터랙티브 카드 열기
+      await SharePlus.instance.share(ShareParams(
+        files: [imageFile],
+        text: '🔗 $webUrl',
+      ));
+      setState(() {
+        _recentSends.insert(0, _RecentSendItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          name: name, method: '이미지 공유', time: '방금 전',
+          revisitCount: 0, viewCount: 0, phone: selected.data.phone,
+        ));
+      });
+    } else {
+      await SharePlus.instance.share(ShareParams(
+        text: '$name 님의 디지털 명함\n$webUrl',
+      ));
+    }
   }
 
   Future<void> _shareCard(
@@ -1086,67 +1110,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     AppProvider provider,
     Profile selected,
   ) async {
-    final prereq = provider.validateGuestSharePrerequisites(selected.data);
-    if (prereq != null) {
-      if (!context.mounted) return;
-      final lang = provider.settings.language;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(prereq),
-          behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: _tr(lang, '작성하기', 'Edit'),
-            onPressed: () => provider.setActiveView(ViewType.editor),
-          ),
-        ),
-      );
-      return;
-    }
-    if (!provider.canAttemptGuestShare()) {
-      if (context.mounted) await LoginBottomSheet.show(context);
-      return;
-    }
-    setState(() {
-      _recentSends.insert(
-        0,
-        _RecentSendItem(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          name: selected.data.fullName.isEmpty ? selected.name : selected.data.fullName,
-          method: '공유 시도',
-          time: '방금 전',
-          revisitCount: 0,
-          viewCount: 0,
-          phone: selected.data.phone,
-        ),
-      );
-    });
-    final displayName = selected.data.fullName.isEmpty
-        ? selected.name
-        : selected.data.fullName;
-    final language = provider.settings.language;
-    final subject = _tr(language, '$displayName 명함', '$displayName\'s Card');
-
-    // 명함 이미지 캡처 → OS 공유시트
-    XFile? imageFile;
-    if (context.mounted) {
-      imageFile = await CardCaptureService.captureCard(context, selected.data);
-    }
-    if (!context.mounted) return;
-
-    final ShareResult result;
-    if (imageFile != null) {
-      result = await SharePlus.instance.share(
-        ShareParams(files: [imageFile], subject: subject),
-      );
-    } else {
-      // 이미지 캡처 실패 시 텍스트 폴백
-      result = await SharePlus.instance.share(
-        ShareParams(text: displayName, subject: subject),
-      );
-    }
-    if (provider.isGuest && result.status == ShareResultStatus.success) {
-      await provider.markGuestShareTrialUsed();
-    }
+    // 보내기와 동일: 카드 이미지 캡처 후 OS 공유
+    await _showSendSheet(context, provider, selected, provider.settings.language);
   }
 
   Profile _resolveSelectedProfile(List<Profile> profiles) {

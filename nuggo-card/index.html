@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0B0B0B">
+
+  <!-- OG 메타태그 — 카카오톡/문자 링크 미리보기 썸네일
+       카카오 OG 캐시 초기화: https://developers.kakao.com/tool/clear/og -->
+  <meta property="og:title"       content="nuggo 디지털 명함">
+  <meta property="og:description" content="탭하면 전화·이메일·카카오 바로 연결되는 스마트 명함">
+  <meta property="og:image"       content="https://jaguar7307-hash.github.io/nuggo/og.svg">
+  <meta property="og:url"         content="https://jaguar7307-hash.github.io/nuggo/">
+  <meta property="og:type"        content="website">
+  <meta name="twitter:card"       content="summary_large_image">
+
+  <title>nuggo 디지털 명함</title>
+
+  <!-- Google Fonts: Flutter 앱 FontType 5종과 1:1 매핑 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Dancing+Script:wght@400;700&family=Space+Mono:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300;1,600&display=swap" rel="stylesheet">
+  <!-- Material Icons Round (Flutter Icons와 동일) -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent:  #6366F1;
+      --bg:      #0B0B0B;
+      --card-w:  min(88vw, 300px);
+      --card-h:  calc(var(--card-w) * 1.6);  /* Flutter 비율 242.55:388.08 ≈ 1:1.6 */
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      font-family: 'Manrope', sans-serif;
+      color: #fff;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 20px 48px;
+      gap: 20px;
+    }
+
+    /* ── NUGGO 브랜드 로고 ── */
+    .logo { font-weight: 800; font-size: 22px; letter-spacing: -0.5px; user-select: none; }
+    .logo .nug { color: #0055FF; }
+    .logo .go  { color: #FF4F00; }
+
+    /* ── 명함 카드 래퍼 ── */
+    .card-wrapper {
+      width: var(--card-w);
+      height: var(--card-h);
+      border-radius: 32px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    /* ── 명함 카드 본체 (Flutter BusinessCard 재현) ── */
+    .card {
+      width: 100%; height: 100%;
+      border-radius: 32px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: #1a1c1e;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 배경 이미지 레이어 */
+    .card-bg {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+    }
+    /* 이미지 위 미세 오버레이 */
+    .card-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.05); }
+
+    /* 콘텐츠 레이어 */
+    .card-content {
+      position: relative; z-index: 1;
+      width: 100%; height: 100%;
+      padding: 12px 24px;
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* TOP: 프로필 이미지 or 슬로건 */
+    .card-top { display: flex; flex-direction: column; align-items: center; padding-top: 4px; gap: 4px; }
+
+    .profile-img {
+      width: 72px; height: 72px; border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.2);
+      box-shadow: 0 0 8px rgba(0,0,0,0.2);
+      object-fit: cover;
+    }
+    .slogan       { font-size: 16px; font-style: italic; text-align: center; padding: 0 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+    .slogan-small { font-size: 11px; font-style: italic; text-align: center; padding: 0 6px;  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+
+    /* MIDDLE: 이름 / 직책 / 회사 */
+    .card-identity { display: flex; flex-direction: column; align-items: center; }
+    .name      { font-size: 22px; font-weight: 700; text-align: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 100%; }
+    .job-title { font-size: 9px;  font-weight: 700; letter-spacing: 2px;  text-align: center; text-transform: uppercase; margin-top: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 100%; }
+    .company   { font-size: 8px;  font-weight: 600; letter-spacing: 1px;  text-align: center; text-transform: uppercase; margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 100%; }
+
+    /* BOTTOM: 아이콘 + 주소 */
+    .card-bottom { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-bottom: 4px; }
+    .icon-row    { display: flex; width: 100%; justify-content: space-evenly; }
+
+    /* 아이콘 버튼 (Flutter _ActionIcon 재현, 터치 48px 이상) */
+    .action-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; flex: 1; text-decoration: none; min-height: 48px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .action-icon:active { opacity: 0.6; transform: scale(0.93); }
+    .action-icon.disabled { pointer-events: none; opacity: 0.3; }
+
+    /* 32×32 원형 컨테이너 */
+    .icon-circle {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.3);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .icon-circle .material-icons-round { font-size: 14px; line-height: 1; }
+    .icon-label { font-size: 6px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+
+    /* 주소 바 */
+    .address-bar {
+      display: flex; align-items: center; gap: 4px;
+      background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; padding: 5px 10px; max-width: 100%; margin-top: 4px; overflow: hidden;
+    }
+    .address-bar .material-icons-round { font-size: 9px; flex-shrink: 0; }
+    .address-text { font-size: 7px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+    /* ── 하단 액션 버튼 (앱 미리보기 화면과 동일 레이아웃) ── */
+    .btn-group {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      width: min(92vw, 340px);
+      gap: 10px;
+    }
+
+    /* 나도 명함 만들기 — 전폭, 주황 그라디언트 */
+    .btn-make {
+      flex: 1;
+      height: 52px;
+      border-radius: 28px;
+      border: none;
+      background: linear-gradient(135deg, #FF8A3D 0%, #FF6000 100%);
+      color: #fff;
+      font-family: 'Manrope', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity 0.15s, transform 0.1s;
+      box-shadow: 0 6px 20px rgba(255,138,61,0.45);
+      user-select: none;
+    }
+    .btn-make:active { opacity: 0.85; transform: scale(0.97); }
+
+    /* 친구 추가 — 원형 버튼 */
+    .btn-contact {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      border: none;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.9);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity 0.15s, transform 0.1s;
+      border: 1px solid rgba(255,255,255,0.18);
+      user-select: none;
+    }
+    .btn-contact:active { opacity: 0.75; transform: scale(0.95); }
+
+    /* ── 에러 상태 ── */
+    .error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 8px; text-align: center; padding: 20px; }
+    .error-state .material-icons-round { font-size: 32px; color: rgba(255,255,255,0.3); }
+    .error-state h3 { font-size: 16px; color: rgba(255,255,255,0.7); }
+    .error-state p  { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+    /* ── 푸터 ── */
+    .footer { font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; }
+    .footer a { color: rgba(255,255,255,0.45); text-decoration: none; }
+  </style>
+</head>
+
+<body>
+<div class="page">
+
+  <div class="logo"><span class="nug">NUG</span><span class="go">GO</span></div>
+
+  <div class="card-wrapper">
+    <div class="card" id="card">
+      <div class="card-content" id="card-content">
+        <!-- JS 렌더링 -->
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group" id="btn-group" style="display:none">
+    <!-- 나도 명함 만들기 — 주황 그라디언트, 전폭 -->
+    <a class="btn-make" id="btn-make" href="https://github.com/jaguar7307-hash/nuggo" target="_blank" rel="noopener">
+      <span class="material-icons-round" style="font-size:20px">auto_awesome</span>
+      나도 명함 만들기
+    </a>
+    <!-- 친구 추가 — 원형, 우측 -->
+    <button class="btn-contact" id="btn-contact" title="연락처 저장">
+      <span class="material-icons-round" style="font-size:22px">person_add</span>
+    </button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ══════════════════════════════════════════════════════════
+  // 1. URL 파라미터 파싱
+  //    Flutter CardUrlGenerator가 생성하는 형식:
+  //    https://…/nuggo-card/?d=BASE64  또는  #d=BASE64
+  //
+  //    단축 키 매핑 (CardUrlGenerator와 동일):
+  //      n=fullName, j=jobTitle, c=companyName
+  //      p=phone,    s=sms,      e=email
+  //      w=website,  k=kakao,    a=address
+  //      sl=slogan,  t=theme,    pi=profileImage
+  //      f=fontIndex(0-4), li=linkedin
+  //      pu=portfolioUrl,  sh=shareLink
+  // ══════════════════════════════════════════════════════════
+  function parseCardData() {
+    var encoded = null;
+    var hash   = location.hash.slice(1);
+    var search = new URLSearchParams(location.search);
+
+    if (hash.startsWith('d='))      { encoded = hash.slice(2); }
+    else if (search.get('d'))       { encoded = search.get('d'); }
+    else if (hash.length > 20)      { encoded = hash; }   // 직접 해시
+
+    if (!encoded) return null;
+    try {
+      var b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+      var pad = b64.length % 4;
+      if (pad) b64 += '===='.slice(pad);
+      var bytes = atob(b64);
+      var jsonStr = decodeURIComponent(bytes.split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      var raw = JSON.parse(jsonStr);
+
+      // 단축키 → 표준 필드명으로 정규화
+      return {
+        fullName:     raw.n  || raw.fullName     || '',
+        jobTitle:     raw.j  || raw.jobTitle     || '',
+        companyName:  raw.c  || raw.companyName  || '',
+        phone:        raw.p  || raw.phone        || '',
+        sms:          raw.s  || raw.sms          || '',
+        email:        raw.e  || raw.email        || '',
+        website:      raw.w  || raw.website      || '',
+        kakao:        raw.k  || raw.kakao        || '',
+        address:      raw.a  || raw.address      || '',
+        slogan:       raw.sl || raw.slogan       || '',
+        theme:        raw.t  || raw.theme        || '#1a1c1e',
+        profileImage: raw.pi || raw.profileImage || '',
+        font:         (raw.f !== undefined ? raw.f : raw.font) || 1,
+        linkedin:     raw.li || raw.linkedin     || '',
+        portfolioUrl: raw.pu || raw.portfolioUrl || '',
+        shareLink:    raw.sh || raw.shareLink    || '',
+      };
+    } catch (e) {
+      console.error('[nuggo] 데이터 파싱 오류:', e);
+      return null;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // 2. 배경색 밝기 판별 (Flutter _isLightBackground 동일 로직)
+  // ══════════════════════════════════════════════════════════
+  function isLightHex(hex) {
+    var h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(function(c){ return c+c; }).join('');
+    var r = parseInt(h.slice(0,2), 16);
+    var g = parseInt(h.slice(2,4), 16);
+    var b = parseInt(h.slice(4,6), 16);
+    return (r*299 + g*587 + b*114) / 1000 >= 128;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // 3. FontType index → Google Font
+  //    Flutter FontType enum 순서와 동일:
+  //    0=serifElegant, 1=modernSans, 2=playfulScript,
+  //    3=classicMono,  4=editorialItalic
+  // ══════════════════════════════════════════════════════════
+  var FONTS = [
+    "'Playfair Display', serif",
+    "'Manrope', sans-serif",
+    "'Dancing Script', cursive",
+    "'Space Mono', monospace",
+    "'Cormorant Garamond', serif",
+  ];
+
+  // ══════════════════════════════════════════════════════════
+  // 4. 아이콘 버튼 생성
+  //    Flutter _ActionIcon 위젯과 동일하게 재현
+  // ══════════════════════════════════════════════════════════
+  function makeIcon(matIcon, label, href, enabled, iconColor, isLight) {
+    var a = document.createElement('a');
+    a.className = 'action-icon' + (enabled ? '' : ' disabled');
+    a.href = (enabled && href) ? href : 'javascript:void(0)';
+
+    // 외부 링크는 새 탭, 네이티브 앱 스킴은 현재 탭
+    var isNative = href && /^(tel:|sms:|mailto:|kakaotalk:)/.test(href);
+    if (enabled && href && !isNative) { a.target = '_blank'; a.rel = 'noopener'; }
+
+    var alpha   = enabled ? '0.3' : '0.1';
+    var isWhite = iconColor === '#ffffff';
+    var rgb     = isWhite ? '255,255,255' : '0,0,0';
+
+    var circle = document.createElement('div');
+    circle.className = 'icon-circle';
+    circle.style.background = 'rgba(' + rgb + ',' + alpha + ')';
+    if (isLight) circle.style.borderColor = 'rgba(0,0,0,0.15)';
+
+    var iconEl = document.createElement('span');
+    iconEl.className = 'material-icons-round';
+    iconEl.textContent = matIcon;
+    iconEl.style.color = iconColor + (enabled ? '' : '4D');
+
+    var labelEl = document.createElement('div');
+    labelEl.className = 'icon-label';
+    labelEl.textContent = label;
+    labelEl.style.color = iconColor + (enabled ? '' : '4D');
+
+    circle.appendChild(iconEl);
+    a.append(circle, labelEl);
+    return a;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // 5. 명함 렌더링 (Flutter BusinessCard 위젯 픽셀 수준 재현)
+  // ══════════════════════════════════════════════════════════
+  function renderCard(d) {
+    var isHex    = d.theme.startsWith('#');
+    var isLight  = isHex ? isLightHex(d.theme) : false;
+    var textColor   = isLight ? '#1a1a1a' : '#ffffff';
+    var accentColor = isLight ? '#6366F1' : 'rgba(255,255,255,0.8)';
+    var iconColor   = isLight ? '#1a1a1a' : '#ffffff';
+    var font        = FONTS[d.font] || FONTS[1];
+
+    var card    = document.getElementById('card');
+    var content = document.getElementById('card-content');
+
+    // 배경
+    if (isHex) {
+      card.style.background = d.theme;
+    } else {
+      var bgDiv = document.createElement('div');
+      bgDiv.className = 'card-bg';
+      bgDiv.style.backgroundImage = "url('" + d.theme + "')";
+      card.insertBefore(bgDiv, content);
+      var ov = document.createElement('div');
+      ov.className = 'card-overlay';
+      card.insertBefore(ov, content);
+    }
+    content.style.fontFamily = font;
+
+    var hasImg    = d.profileImage && d.profileImage.startsWith('http');
+    var hasSlogan = !!(d.slogan && d.slogan.trim());
+
+    // ── TOP ──
+    var top = document.createElement('div');
+    top.className = 'card-top';
+
+    if (hasImg) {
+      var img = document.createElement('img');
+      img.className = 'profile-img';
+      img.src = d.profileImage; img.alt = d.fullName;
+      top.appendChild(img);
+      if (hasSlogan) {
+        var ss = document.createElement('div');
+        ss.className = 'slogan-small'; ss.style.color = textColor;
+        ss.textContent = '"' + d.slogan + '"';
+        top.appendChild(ss);
+      }
+    } else if (hasSlogan) {
+      var sl = document.createElement('div');
+      sl.className = 'slogan'; sl.style.color = textColor;
+      sl.textContent = '"' + d.slogan + '"';
+      top.appendChild(sl);
+    }
+
+    // ── IDENTITY ──
+    var identity = document.createElement('div');
+    identity.className = 'card-identity';
+
+    var nameEl = document.createElement('div');
+    nameEl.className = 'name'; nameEl.style.color = textColor;
+    nameEl.textContent = d.fullName;
+
+    var jobEl = document.createElement('div');
+    jobEl.className = 'job-title'; jobEl.style.color = accentColor;
+    jobEl.textContent = (d.jobTitle || '').toUpperCase();
+
+    var compEl = document.createElement('div');
+    compEl.className = 'company'; compEl.style.color = textColor + '99';
+    compEl.textContent = (d.companyName || '').toUpperCase();
+
+    identity.append(nameEl, jobEl, compEl);
+
+    // ── BOTTOM 아이콘 ──
+    var bottom = document.createElement('div');
+    bottom.className = 'card-bottom';
+
+    // 카카오 URL
+    var kakaoHref = '';
+    if (d.kakao) {
+      kakaoHref = d.kakao.startsWith('http')
+        ? d.kakao : 'https://open.kakao.com/o/' + d.kakao;
+    }
+
+    // SNS/공유 href
+    var shareHref = (d.shareLink && d.shareLink.startsWith('http'))
+      ? d.shareLink
+      : (d.website && d.website.startsWith('http') ? d.website : '');
+
+    // 전화번호 정리
+    var phoneNum = (d.phone || '').replace(/[\s\-\(\)]/g, '');
+    var smsNum   = ((d.sms || d.phone) || '').replace(/[\s\-\(\)]/g, '');
+
+    // 행 1: 전화 / 문자 / 이메일
+    var row1 = document.createElement('div'); row1.className = 'icon-row';
+    row1.append(
+      makeIcon('phone',       'PHONE',   phoneNum ? 'tel:'    + phoneNum           : '', !!phoneNum,           iconColor, isLight),
+      makeIcon('chat_bubble', 'MESSAGE', smsNum   ? 'sms:'    + smsNum             : '', !!smsNum,             iconColor, isLight),
+      makeIcon('mail',        'EMAIL',   d.email  ? 'mailto:' + d.email            : '', !!d.email,            iconColor, isLight)
+    );
+
+    // 행 2: 웹사이트 / 카카오 / SNS
+    var row2 = document.createElement('div'); row2.className = 'icon-row';
+    var websiteHref = d.website
+      ? (d.website.startsWith('http') ? d.website : 'https://' + d.website) : '';
+
+    row2.append(
+      makeIcon('language',            'WEBSITE', websiteHref, !!d.website,  iconColor, isLight),
+      makeIcon('chat_bubble_outline', 'KAKAO',   kakaoHref,   !!d.kakao,    iconColor, isLight),
+      makeIcon('share',               'SNS',     shareHref,   !!shareHref,  iconColor, isLight)
+    );
+
+    // 행 3: 포트폴리오 (중앙 단독)
+    var row3 = document.createElement('div');
+    row3.className = 'icon-row'; row3.style.justifyContent = 'center';
+    row3.appendChild(
+      makeIcon('folder_open', '포트폴리오', d.portfolioUrl || '', !!d.portfolioUrl, iconColor, isLight)
+    );
+
+    bottom.append(row1, row2, row3);
+
+    // 주소 바
+    if (d.address) {
+      var ab = document.createElement('div'); ab.className = 'address-bar';
+      if (isLight) ab.style.background = 'rgba(255,255,255,0.4)';
+
+      var locIcon = document.createElement('span');
+      locIcon.className = 'material-icons-round';
+      locIcon.textContent = 'location_on'; locIcon.style.color = textColor + 'E6';
+
+      var addrTxt = document.createElement('div');
+      addrTxt.className = 'address-text';
+      addrTxt.style.color = textColor + 'E6';
+      addrTxt.textContent = d.address.toUpperCase();
+
+      ab.append(locIcon, addrTxt);
+      bottom.appendChild(ab);
+    }
+
+    // SNS 아이콘: Web Share API 또는 URL 복사
+    var shareBtn = row2.querySelectorAll('.action-icon')[2];
+    if (shareBtn && shareHref) {
+      shareBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (navigator.share) {
+          navigator.share({ title: d.fullName + ' 명함', url: location.href }).catch(function(){});
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText(location.href).then(function() { alert('링크가 복사되었습니다!'); });
+        }
+      });
+    }
+
+    content.innerHTML = '';
+    content.append(top, identity, bottom);
+
+    // 페이지/OG 메타 업데이트 (브라우저 탭 + 로컬 테스트용)
+    var pageTitle = (d.fullName || 'nuggo') + ' | 디지털 명함';
+    document.title = pageTitle;
+    var mOgTitle = document.querySelector('meta[property="og:title"]');
+    if (mOgTitle) mOgTitle.setAttribute('content', pageTitle);
+    var mOgDesc = document.querySelector('meta[property="og:description"]');
+    if (mOgDesc) mOgDesc.setAttribute('content', d.slogan || d.fullName + '의 디지털 명함');
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // 6. vCard (.vcf) 생성 및 다운로드
+  // ══════════════════════════════════════════════════════════
+  function downloadVCard() {
+    var d = window._nuggoCard;
+    if (!d) return;
+    var lines = ['BEGIN:VCARD', 'VERSION:3.0',
+      'FN:'    + (d.fullName    || ''),
+      'N:;'   + (d.fullName    || '') + ';;;',
+      'ORG:'  + (d.companyName || ''),
+      'TITLE:'+ (d.jobTitle    || ''),
+    ];
+    if (d.phone)       lines.push('TEL;TYPE=CELL:'   + d.phone);
+    if (d.email)       lines.push('EMAIL:'            + d.email);
+    if (d.website)     lines.push('URL:'              + d.website);
+    if (d.linkedin)    lines.push('URL;TYPE=LinkedIn:'+ d.linkedin);
+    if (d.address)     lines.push('ADR:;;'            + d.address + ';;;;');
+    if (d.shareLink)   lines.push('URL;TYPE=WORK:'    + d.shareLink);
+    if (d.kakao)       lines.push('X-SOCIALPROFILE;TYPE=kakaotalk:' + d.kakao);
+    lines.push('END:VCARD');
+
+    var blob = new Blob([lines.join('\r\n')], { type: 'text/vcard;charset=utf-8' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url; a.download = (d.fullName || 'contact') + '.vcf';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // 7. 초기화
+  // ══════════════════════════════════════════════════════════
+  var data = parseCardData();
+
+  if (data) {
+    window._nuggoCard = data;
+    renderCard(data);
+    document.getElementById('btn-group').style.display = 'flex';
+    document.getElementById('btn-contact').addEventListener('click', downloadVCard);
+
+    // 나도 명함 만들기: 플랫폼별 링크 (앱 출시 전 임시)
+    document.getElementById('btn-make').addEventListener('click', function(e) {
+      e.preventDefault();
+      var ua = navigator.userAgent || '';
+      // TODO: 앱 출시 후 실제 스토어 링크로 교체
+      location.href = 'https://github.com/jaguar7307-hash/nuggo';
+    });
+
+  } else {
+    // 데이터 없음 → 에러 UI
+    document.getElementById('card-content').innerHTML =
+      '<div class="error-state">'
+      + '<span class="material-icons-round">link_off</span>'
+      + '<h3>명함 정보를 찾을 수 없어요</h3>'
+      + '<p>nuggo 앱에서 공유된 링크로 접속해 주세요.</p>'
+      + '</div>';
+  }
+
+})();
+</script>
+</body>
+</html>
