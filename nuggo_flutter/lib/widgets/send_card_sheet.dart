@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../models/card_data.dart';
 import '../providers/app_provider.dart';
-import '../services/card_capture_service.dart';
+import '../services/card_url_generator.dart';
 import 'business_card_web_view.dart';
 import 'login_bottom_sheet.dart';
 
@@ -96,96 +96,78 @@ class _SendCardSheetState extends State<SendCardSheet> {
     }
   }
 
-  // ── 이미지 캡처 (공통) ────────────────────────────────────────────────
-  Future<XFile?> _captureImage() async {
-    if (widget.cardData == null || !mounted) return null;
-    return CardCaptureService.captureCard(context, widget.cardData!);
-  }
+  String _cardUrl() => widget.cardData != null
+      ? CardUrlGenerator.generate(widget.cardData!)
+      : 'https://jaguar7307-hash.github.io/nuggo/card.html';
 
-  // ── 핵심 공유: PNG 이미지 단독 → OS 공유시트 ─────────────────────────
-  Future<void> _shareImage(String channel, AppProvider provider) async {
-    setState(() => _isLoading = true);
-    final imageFile = await _captureImage();
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+  // ── 카카오톡: URL 텍스트 전송 → 카카오가 링크 미리보기 + [확인하기] 생성 ──
+  Future<void> _handleKakao(AppProvider provider) async {
     Navigator.of(context).pop();
-
     final name = _displayName();
-    final subject = _tr('$name 명함', "$name's Card");
-
+    final url = _cardUrl();
+    // 카카오에서 URL만 보내면 자동으로 링크 카드 + [확인하기] 버튼 생성
     ShareResult? result;
     try {
       result = await SharePlus.instance.share(
-        imageFile != null
-            ? ShareParams(files: [imageFile], subject: subject)
-            : ShareParams(text: '$name 명함', subject: subject),
+        ShareParams(text: url, subject: _tr('$name 명함', "$name's Card")),
       );
     } catch (_) {
+      await Clipboard.setData(ClipboardData(text: url));
       return;
     }
-    _showResult(result.status == ShareResultStatus.success, channel, provider);
+    _showResult(result.status == ShareResultStatus.success, '카카오톡', provider);
   }
 
-  // ── 문자(SMS): sms: URL → Messages 앱 직접 열기 ──────────────────────
+  // ── 문자(SMS): sms: 직접 실행 (URL 포함 텍스트) ──────────────────────
   Future<void> _handleSms(AppProvider provider) async {
-    setState(() => _isLoading = true);
-    final imageFile = await _captureImage();
-    if (!mounted) return;
-    setState(() => _isLoading = false);
     Navigator.of(context).pop();
-
-    // 이미지가 있으면 공유시트로 → 사용자가 Messages 선택
-    if (imageFile != null) {
-      final name = _displayName();
-      ShareResult? result;
-      try {
-        result = await SharePlus.instance.share(
-          ShareParams(files: [imageFile], subject: _tr('$name 명함', "$name's Card")),
-        );
-      } catch (_) {}
-      _showResult(result?.status == ShareResultStatus.success, '문자(SMS)', provider);
-      return;
-    }
-
-    // 이미지 캡처 실패 → SMS 텍스트로 대체
     final name = _displayName();
-    final body = Uri.encodeComponent(_tr('$name 님의 명함입니다.', "$name's business card"));
+    final url = _cardUrl();
+    final body = Uri.encodeComponent('$name 님의 디지털 명함\n$url');
+    bool launched = false;
     try {
       final uri = Uri.parse('sms:?body=$body');
-      if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      await Clipboard.setData(ClipboardData(text: name));
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        launched = true;
+      }
+    } catch (_) {}
+    if (!launched) {
+      // SMS 실패 → OS 공유시트
+      try {
+        await SharePlus.instance.share(
+          ShareParams(text: '$name 님의 디지털 명함\n$url'),
+        );
+      } catch (_) {
+        await Clipboard.setData(ClipboardData(text: url));
+      }
     }
+    _showResult(launched, '문자(SMS)', provider);
   }
 
-  // ── 이메일: 이미지 공유시트 → 사용자가 Mail 선택 ─────────────────────
+  // ── 이메일: mailto: 직접 실행 (URL 포함 본문) ────────────────────────
   Future<void> _handleEmail(AppProvider provider) async {
-    setState(() => _isLoading = true);
-    final imageFile = await _captureImage();
-    if (!mounted) return;
-    setState(() => _isLoading = false);
     Navigator.of(context).pop();
-
     final name = _displayName();
-    final subject = _tr('$name 명함', "$name's Card");
-
-    if (imageFile != null) {
-      ShareResult? result;
-      try {
-        result = await SharePlus.instance.share(
-          ShareParams(files: [imageFile], subject: subject),
-        );
-      } catch (_) {}
-      _showResult(result?.status == ShareResultStatus.success, '이메일', provider);
-      return;
-    }
-
-    // 이미지 없음 → mailto: 대체
-    final subjectEnc = Uri.encodeComponent(subject);
+    final url = _cardUrl();
+    final subject = Uri.encodeComponent(_tr('$name 님의 디지털 명함', "$name's Digital Card"));
+    final body = Uri.encodeComponent('$name 님의 명함을 공유합니다.\n\n아래 링크를 탭하면 전화·이메일·카카오 바로 연결됩니다.\n$url');
+    bool launched = false;
     try {
-      final uri = Uri.parse('mailto:?subject=$subjectEnc');
-      if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final uri = Uri.parse('mailto:?subject=$subject&body=$body');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        launched = true;
+      }
     } catch (_) {}
+    if (!launched) {
+      try {
+        await SharePlus.instance.share(ShareParams(text: '$name 님의 디지털 명함\n$url'));
+      } catch (_) {
+        await Clipboard.setData(ClipboardData(text: url));
+      }
+    }
+    _showResult(launched, '이메일', provider);
   }
 
   // ── 웹카드 미리보기 ──────────────────────────────────────────────────
@@ -201,7 +183,7 @@ class _SendCardSheetState extends State<SendCardSheet> {
 
     switch (channel) {
       case '카카오톡':
-        await _shareImage('카카오톡', provider);
+        await _handleKakao(provider);
       case '문자(SMS)':
         await _handleSms(provider);
       case '이메일':

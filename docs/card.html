@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <meta name="theme-color" content="#0f172a">
   <title>NUGGO 디지털 명함</title>
+
+  <!-- OpenGraph: 카카오/문자/슬랙 등 링크 미리보기에 표시되는 정보 -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="NUGGO 디지털 명함">
+  <meta property="og:description" content="탭하면 전화·이메일·카카오 바로 연결되는 인터랙티브 명함">
+  <meta property="og:image" content="https://jaguar7307-hash.github.io/nuggo/og-card.png">
+  <meta property="og:url" content="https://jaguar7307-hash.github.io/nuggo/card.html">
+  <meta name="twitter:card" content="summary_large_image">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -232,6 +240,16 @@
     const g = parseInt(full.slice(2,4),16);
     const b = parseInt(full.slice(4,6),16);
     return ((r*299)+(g*587)+(b*114))/1000 >= 128;
+  }
+
+  // 카드 주인 이름으로 페이지 제목 동적 업데이트 (카카오 미리보기에도 반영)
+  if (d.n) {
+    document.title = d.n + ' 님의 디지털 명함 | NUGGO';
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', d.n + ' 님의 디지털 명함');
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    const parts = [d.j, d.c].filter(Boolean).join(' · ');
+    if (ogDesc && parts) ogDesc.setAttribute('content', parts + ' | 탭하면 전화·이메일 바로 연결');
   }
 
   const isLight = isLightColor(d.t);
