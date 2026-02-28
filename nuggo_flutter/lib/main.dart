@@ -69,7 +69,8 @@ void _showQrDialog(BuildContext context, AppProvider provider) {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  KakaoSdk.init(nativeAppKey: '7c0b5a1fa75d6fe73b650b00005acc03');
+  const kakaoKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
+  if (kakaoKey.isNotEmpty) KakaoSdk.init(nativeAppKey: kakaoKey);
   await SharedPreferences.getInstance();
   debugPaintBaselinesEnabled = false;
   debugPaintSizeEnabled = false;
