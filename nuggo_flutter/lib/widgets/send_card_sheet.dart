@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
@@ -101,63 +100,23 @@ class _SendCardSheetState extends State<SendCardSheet> {
       ? CardUrlGenerator.generate(widget.cardData!)
       : 'https://jaguar7307-hash.github.io/nuggo/card.html';
 
-  // ── 카카오톡: FeedTemplate → 카드 이미지 + [명함 보기] 버튼 ─────────────────
+  // ── 카카오톡: URL 링크만 전송 ─────────────────────────────────────────────
   Future<void> _handleKakao(AppProvider provider) async {
     Navigator.of(context).pop();
     final url = _cardUrl();
     final name = _displayName();
-    final data = widget.cardData;
-    final desc = [data?.jobTitle, data?.companyName]
-        .where((s) => s != null && s.trim().isNotEmpty)
-        .join(' · ');
 
     bool success = false;
     try {
-      final feed = FeedTemplate(
-        content: Content(
-          title: '$name 님의 디지털 명함',
-          description: desc.isNotEmpty ? desc : '탭하면 전화·이메일·카카오 바로 연결!',
-          imageUrl: Uri.parse(
-            'https://jaguar7307-hash.github.io/nuggo/og-card.png',
-          ),
-          link: Link(
-            webUrl: Uri.parse(url),
-            mobileWebUrl: Uri.parse(url),
-          ),
-        ),
-        buttons: [
-          Button(
-            title: '명함 보기 →',
-            link: Link(
-              webUrl: Uri.parse(url),
-              mobileWebUrl: Uri.parse(url),
-            ),
-          ),
-        ],
+      final result = await SharePlus.instance.share(
+        ShareParams(text: '$name 님의 디지털 명함\n$url'),
       );
-
-      final available = await ShareClient.instance.isKakaoTalkSharingAvailable();
-      if (available) {
-        final uri = await ShareClient.instance.shareDefault(template: feed);
-        await ShareClient.instance.launchKakaoTalk(uri);
-        success = true;
-      } else {
-        final shareUrl = await WebSharerClient.instance.makeDefaultUrl(template: feed);
-        if (await canLaunchUrl(shareUrl)) {
-          await launchUrl(shareUrl, mode: LaunchMode.externalApplication);
-        }
-        success = true;
-      }
+      success = result.status == ShareResultStatus.success;
     } catch (_) {
-      // SDK 실패 → OS 공유시트로 URL 공유
       try {
-        final result = await SharePlus.instance.share(
-          ShareParams(text: url, subject: '$name 명함'),
-        );
-        success = result.status == ShareResultStatus.success;
-      } catch (_) {
         await Clipboard.setData(ClipboardData(text: url));
-      }
+        success = true;
+      } catch (_) {}
     }
     if (mounted) _showResult(success, '카카오톡', provider);
   }
