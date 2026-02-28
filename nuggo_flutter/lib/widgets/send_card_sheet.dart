@@ -103,55 +103,24 @@ class _SendCardSheetState extends State<SendCardSheet> {
     }
   }
 
-  // ── 카카오톡: FeedTemplate으로 이미지 카드 1개 전송
-  //    수신자: 카드 이미지 + [명함 열기] 버튼 → 탭 → 웹 명함 → 아이콘 실제 동작
+  // ── 카카오톡: 스크랩 메시지 (URL → og:image 자동 스크랩 → 이미지 카드 1개)
+  //    카카오 콘솔 [제품 링크 관리]→[웹 도메인]에 jaguar7307-hash.github.io 등록 필요
   Future<void> _handleKakao(AppProvider provider) async {
     final webUrl = _cardUrl();
-    final name = _displayName();
-    const ogImageUrl = 'https://jaguar7307-hash.github.io/nuggo/og.png';
 
     bool success = false;
     try {
       final isKakaoInstalled = await ShareClient.instance.isKakaoTalkSharingAvailable();
       if (isKakaoInstalled) {
-        final template = FeedTemplate(
-          content: Content(
-            title: '$name 님의 디지털 명함',
-            description: '탭하면 전화·이메일·카카오 바로 연결',
-            imageUrl: Uri.parse(ogImageUrl),
-            link: Link(
-              webUrl: Uri.parse(webUrl),
-              mobileWebUrl: Uri.parse(webUrl),
-            ),
-          ),
-          buttons: [
-            Button(
-              title: '명함 열기',
-              link: Link(
-                webUrl: Uri.parse(webUrl),
-                mobileWebUrl: Uri.parse(webUrl),
-              ),
-            ),
-          ],
-        );
-        final uri = await ShareClient.instance.shareDefault(template: template);
+        final uri = await ShareClient.instance.shareScrap(url: webUrl);
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         success = true;
       } else {
-        // KakaoTalk 미설치: 웹 공유 시도
-        final uri = await WebSharerClient.instance.makeDefaultUrl(template: FeedTemplate(
-          content: Content(
-            title: '$name 님의 디지털 명함',
-            description: '탭하면 전화·이메일·카카오 바로 연결',
-            imageUrl: Uri.parse(ogImageUrl),
-            link: Link(webUrl: Uri.parse(webUrl), mobileWebUrl: Uri.parse(webUrl)),
-          ),
-        ));
+        final uri = await WebSharerClient.instance.makeScrapUrl(url: webUrl);
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         success = true;
       }
     } catch (_) {
-      // 폴백: 일반 URL 공유
       try {
         final result = await SharePlus.instance.share(ShareParams(text: webUrl));
         success = result.status == ShareResultStatus.success;
