@@ -67,6 +67,9 @@ dependencies:
   
   # Sharing
   share_plus: ^12.0.1
+  
+  # KakaoTalk Link (FeedTemplate - 1개 카드 메시지)
+  kakao_flutter_sdk_share: ^1.9.7
 
   # Biometric Auth
   local_auth: ^3.0.0
